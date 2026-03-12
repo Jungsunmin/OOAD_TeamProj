@@ -32,8 +32,8 @@ jobs:
           cppcheck \
             --enable=all --inconclusive --std=c++17 \
             --error-exitcode=1 \
-            -I include -I src \
-            src include
+            -I src \
+            src 
 
       - name: Static Analysis - clang-tidy
         run: |
