@@ -13,16 +13,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install build tools
+      - name: Install build & analysis tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build g++
+          sudo apt-get install -y cmake ninja-build g++ clang-tidy cppcheck
 
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DENABLE_TESTS=ON -DCMAKE_BUILD_TYPE=Debug
+        run: cmake -S . -B build -G Ninja -DENABLE_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
       - name: Build
         run: cmake --build build
 
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+      - name: Static Analysis - cppcheck
+        run: |
+          cppcheck \
+            --enable=all --inconclusive --std=c++17 \
+            --error-exitcode=1 \
+            -I include -I src \
+            src include
+
+      - name: Static Analysis - clang-tidy
+        run: |
+          find src -name '*.cpp' -print0 | xargs -0 -n 1 clang-tidy -p build
