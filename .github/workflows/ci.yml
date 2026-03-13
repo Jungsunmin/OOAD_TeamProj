@@ -16,10 +16,11 @@ jobs:
       - name: Install build & analysis tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build g++ clang-tidy cppcheck
+          sudo apt-get install -y cmake g++ clang-tidy cppcheck make
 
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DENABLE_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_C_COMPILER_LAUNCHER= -DCMAKE_CXX_COMPILER_LAUNCHER= -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        run: cmake -S . -B build -DENABLE_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_C_COMPILER_LAUNCHER= -DCMAKE_CXX_COMPILER_LAUNCHER= -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+            
 
       - name: Build
         run: cmake --build build
