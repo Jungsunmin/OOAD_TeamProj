@@ -42,3 +42,7 @@ jobs:
         uses: SonarSource/sonarcloud-github-action@v3
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - name: Debug compile_commands
+        run: |
+          ls -al build/compile_commands.json
+          head -n 40 build/compile_commands.json
