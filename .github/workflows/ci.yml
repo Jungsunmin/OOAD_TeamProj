@@ -41,9 +41,6 @@ jobs:
         run: |
           find src -name '*.cpp' -print0 | xargs -0 -n 1 clang-tidy -p build
       
-      - name: Fix paths for sonarCloud
-        run: |
-          sed -i "s|$GITHUB_WORKSPACE|/github/workspace|g" build/compile_commands.json
       
       - name: Debug compile_commands first entry
         run: |
@@ -57,10 +54,16 @@ jobs:
           print("command:", (e.get("command","")[:400]))
           PY
 
-  
+      - name: Fix paths for SonarCloud
+        run: |
+          sed -i "s|$GITHUB_WORKSPACE|/github/workspace|g" build/compile_commands.json
+
           
       - name: SonarCloud Scan
-        run: sonar-scanner -X
         uses: SonarSource/sonarcloud-github-action@v3
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITGUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: >
+            -X
