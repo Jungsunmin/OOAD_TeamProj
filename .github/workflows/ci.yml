@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 #소나클라우드 분석위한 깃 히스토리 가져오기
 
       - name: Install build & analysis tools
         run: |
@@ -59,12 +61,14 @@ jobs:
         run: |
           sed -i "s|$GITHUB_WORKSPACE|/github/workspace|g" build/compile_commands.json
 
-          
+       #소나클라우드 방식 변경: 도커 -> 러너에 sonar scanner 직접 설치   
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v3
+        uses: SonarSource/sonarqube-scan-action@v4
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          GITGUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: >
-            -X
+             -X
+             -Dsonar.cfamily.compile-commands=build/compile_commands.json
+        #-X is optional.
