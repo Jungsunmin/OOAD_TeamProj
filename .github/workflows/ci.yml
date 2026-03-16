@@ -51,6 +51,12 @@ jobs:
           print("directory:", e.get("directory"))
           print("command:", (e.get("command","")[:400]))
           PY
+
+  #생성된 json파일의 경로의 일부를 치환함.
+      - name: Fix absolute paths in compile_commands.json for SonarCloud Docker
+        run: |
+          sed -i "s|$GITHUB_WORKSPACE|/github/workspace|g" build/compile_commands.json
+          
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@v3
         env:
