@@ -61,7 +61,7 @@ jobs:
 
        #소나클라우드 방식 변경: 도커 -> 러너에 sonar scanner 직접 설치   
       - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@v4
+        uses: SonarSource/sonarqube-scan-action@v7
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -70,4 +70,4 @@ jobs:
              -X
              -Dsonar.cfamily.compile-commands=build/compile_commands.json
         #-X is optional.
-        #.sources=src : src/*.cpp 탐색
+        
