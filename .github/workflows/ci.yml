@@ -57,9 +57,7 @@ jobs:
           print("command:", (e.get("command","")[:400]))
           PY
 
-      - name: Fix paths for SonarCloud
-        run: |
-          sed -i "s|$GITHUB_WORKSPACE|/github/workspace|g" build/compile_commands.json
+      #경로변경 삭제
 
        #소나클라우드 방식 변경: 도커 -> 러너에 sonar scanner 직접 설치   
       - name: SonarCloud Scan
@@ -70,7 +68,6 @@ jobs:
         with:
           args: >
              -X
-             -Dsonar.sources=src
              -Dsonar.cfamily.compile-commands=build/compile_commands.json
         #-X is optional.
         #.sources=src : src/*.cpp 탐색
