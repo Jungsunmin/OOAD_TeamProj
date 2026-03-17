@@ -43,17 +43,15 @@ jobs:
           ctest --test-dir build --output-on-failure
 
           lcov --capture --directory build --output-file coverage.info --ignore-errors mismatch #data collection
-          lcov --remove coverage.info '/usr/*' '${{ github.workspace }}/tests/*' --output-file coverage.info --ignore-errors mismatch #exclude system and test files
+          lcov --remove coverage.info \
+            '/usr/*' \
+            '${{ github.workspace }}/tests/*' \
+            '*/_deps/*' \
+            '*/build/*' \
+            --output-file coverage.info \
+            --ignore-errors mismatch,unused #exclude system and test files
           genhtml coverage.info -o coverage_html #generate HTML report
 
-      - name: Filter Coverage
-        run: |
-         lcov --remove coverage.info \
-              '/usr/*' \
-              '*/tests/*' \
-              '*/include/gtest/*' \
-              '*/v1/*' \
-              --output-file coverage.info --ignore-errors mismatch
 
 
       - name: Deploy to GitHub Pages
