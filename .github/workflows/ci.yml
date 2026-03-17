@@ -46,6 +46,16 @@ jobs:
           lcov --remove coverage.info '/usr/*' '${{ github.workspace }}/tests/*' --output-file coverage.info --ignore-errors mismatch #exclude system and test files
           genhtml coverage.info -o coverage_html #generate HTML report
 
+      - name: Filter Coverage
+        run: |
+         lcov --remove coverage.info \
+              '/usr/*' \
+              '*/tests/*' \
+              '*/include/gtest/*' \
+              '*/v1/*' \
+              --output-file coverage.info --ignore-errors mismatch
+
+
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
