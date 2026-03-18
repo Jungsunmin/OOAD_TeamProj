@@ -67,7 +67,7 @@ jobs:
             --std=c++17 \
             --inline-suppr \
             --suppress=missingIncludeSystem \
-            --error-exitcode=0 \ # cppcheck가 문제를 발견해도 0을 반환하도록 설정
+            --error-exitcode=0 \
             --xml \
             --xml-version=2 \
             2> reports/cppcheck.xml # 실패해도 true를 반환해서 다음으로 넘김
