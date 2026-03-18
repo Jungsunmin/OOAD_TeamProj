@@ -21,5 +21,6 @@ int main() {
     scanner.Check_Status();
     RvcController c;
     std::cout << "RVC Controller: " << c.next_action(false,false,false,false) << "\n";
+	int unused = 1; // cppcheck: unusedVariable - 'unused' is assigned a value that is never used.
     return 0;
 }

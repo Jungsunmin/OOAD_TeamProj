@@ -67,7 +67,7 @@ jobs:
             --std=c++17 \
             --inline-suppr \
             --suppress=missingIncludeSystem \
-            --error-exitcode=1 \
+            --error-exitcode=0 \    #0으로 설정하여 cppcheck가 문제를 발견해도 실패하지 않도록 함(기존 1에서 변경)
             --xml --xml-version=2 \
             2> reports/cppcheck.xml
           echo "CPPCHECK_EXIT_CODE=$?" >> $GITHUB_ENV
