@@ -23,6 +23,11 @@ add_executable(rvc_app
 )
 target_link_libraries(rvc_app PRIVATE rvc)
 
+if(CMAKE_COMPILER_IS_GNUCXX)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
+endif()
+
 if(ENABLE_TESTS)
   enable_testing()
   add_subdirectory(tests)

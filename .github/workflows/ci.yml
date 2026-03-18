@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [ "main", "develop", "feature/*" ]
   pull_request:
 
 jobs:
@@ -19,17 +19,46 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential
-          sudo apt-get install -y cmake g++ clang-tidy cppcheck make
+          sudo apt-get install -y cmake g++ clang-tidy cppcheck make lcov
 
       - name: Configure
-        run: cmake -S . -B build -DENABLE_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_C_COMPILER_LAUNCHER= -DCMAKE_CXX_COMPILER_LAUNCHER= -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        run: |
+          cmake -S . -B build \
+          -DENABLE_TESTS=ON \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_CXX_FLAGS="--coverage" \
+          -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
+          -DCMAKE_C_COMPILER=/usr/bin/gcc \
+          -DCMAKE_CXX_COMPILER=/usr/bin/g++ \
+          -DCMAKE_C_COMPILER_LAUNCHER= \
+          -DCMAKE_CXX_COMPILER_LAUNCHER= \
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
             
 
       - name: Build
         run: cmake --build build
 
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: |
+          ctest --test-dir build --output-on-failure
+
+          lcov --capture --directory build --output-file coverage.info --ignore-errors mismatch #data collection
+          lcov --remove coverage.info \
+            '/usr/*' \
+            '${{ github.workspace }}/tests/*' \
+            '*/_deps/*' \
+            '*/build/*' \
+            --output-file coverage.info \
+            --ignore-errors mismatch,unused #exclude system and test files
+          genhtml coverage.info -o coverage_html #generate HTML report
+
+
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: coverage_html # 배포할 HTML 리포트 폴더
+          branch: gh-pages
 
       - name: Static Analysis - cppcheck
         run: |
@@ -69,5 +98,21 @@ jobs:
           args: >
              -X
              -Dsonar.cfamily.compile-commands=build/compile_commands.json
+             -Dsonar.cfamily.gcov.reportsPath=build
         #-X is optional.
-        
+      - name: Discord Notification
+        uses: sarisia/actions-status-discord@v1
+        if: always() # 빌드 성공/실패 상관없이 무조건 알림 전송
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: ${{ job.status }}
+          title: "CI/CD 리포트: ${{ github.repository }}"
+          description: |
+            상태: ${{ job.status == 'success' && '✅ 성공' || '❌ 실패' }}
+            브랜치: `${{ github.ref_name }}`
+            작성자: ${{ github.actor }}
+            
+            커버리지 리포트 확인하기: 
+            [https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/]
+          color: ${{ job.status == 'success' && '0x00ff00' || '0xff0000' }}
+          username: "GitHub CI Bot"
