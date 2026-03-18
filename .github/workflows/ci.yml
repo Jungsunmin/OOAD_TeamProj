@@ -19,7 +19,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential
-          sudo apt-get install -y cmake g++ clang-tidy cppcheck make lcov python3-pygments
+          sudo apt-get install -y cmake g++ clang-tidy cppcheck make lcov python3-pygments gcovr
 
       - name: Configure
         run: |
@@ -51,6 +51,7 @@ jobs:
             --output-file coverage.info \
             --ignore-errors mismatch,unused #exclude system and test files
           genhtml coverage.info -o coverage_html #generate HTML report
+          gcovr --sonarqube coverage.xml --filter src/  #generate SonarQube XML report for source files only
 
 
       - name: Static Analysis - cppcheck
