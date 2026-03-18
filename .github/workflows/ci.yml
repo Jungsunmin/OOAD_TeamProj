@@ -70,7 +70,7 @@ jobs:
             --error-exitcode=0 \
             --xml \
             --xml-version=2 \
-            2> reports/cppcheck.xml # 실패해도 true를 반환해서 다음으로 넘김
+            2> reports/cppcheck.xml
           echo "CPPCHECK_EXIT_CODE=$?" >> $GITHUB_ENV
           exit 0
 
@@ -121,7 +121,7 @@ jobs:
 
       - name: Static Analysis - clang-tidy
         run: |
-          run-clang-tidy -p build -header-filter='src/.*' > clang-tidy-report.txt || true
+          run-clang-tidy -p build -header-filter='src/.*' > clang-tidy-report.txt
       
       
       - name: Debug compile_commands first entry
