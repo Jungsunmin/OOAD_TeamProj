@@ -62,12 +62,17 @@ jobs:
 
       - name: Static Analysis - cppcheck
         run: |
+          mkdir -p reports
+
           cppcheck \
-            --enable=all --inconclusive --std=c++17 \
-            --error-exitcode=0 \
+            --project=build/compile_commands.json \
+            --enable=warning,style,performance,portability \
+            --std=c++17 \
+            --inline-suppr \
             --suppress=missingIncludeSystem \
-            -I src \
-            src
+            --error-exitcode=1 \
+            --xml --xml-version=2 \
+            2> reports/cppcheck.xml
 
       - name: Static Analysis - clang-tidy
         run: |
