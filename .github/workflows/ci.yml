@@ -62,13 +62,13 @@ jobs:
 
       - name: Static Analysis - cppcheck
         run: |
-          cppcheck \    #시작
-            --enable=all --inconclusive --std=c++17 \   #모든걸 다 검사 , C++17 표준으로 검사 
-            --error-exitcode=0 \    #검사 결과에 따라 종료 코드 설정 (0: 성공, 1: 경고, 2: 오류)
-            --suppress=missingIncludeSystem \   #시스템 헤더 파일이 없을 때 발생하는 경고 무시
-            --xml --xml-version=2 \ #XML 형식으로 출력
-            -I src \    #검사할 소스 코드 디렉토리 지정
-            src 2> cppcheck-report.xml  #검사 결과를 XML 파일로 저장
+          cppcheck \
+            --enable=all --inconclusive --std=c++17 \
+            --error-exitcode=0 \
+            --suppress=missingIncludeSystem \
+            --xml --xml-version=2 \
+            -I src \
+            src 2> cppcheck-report.xml
 
       - name: Static Analysis - clang-tidy
         run: |
