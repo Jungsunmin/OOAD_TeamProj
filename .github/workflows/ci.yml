@@ -67,10 +67,10 @@ jobs:
             --std=c++17 \
             --inline-suppr \
             --suppress=missingIncludeSystem \
-            --error-exitcode=0 \
+            --error-exitcode=0 \ # cppcheck가 문제를 발견해도 0을 반환하도록 설정
             --xml \
             --xml-version=2 \
-            2> reports/cppcheck.xml || true # 실패해도 true를 반환해서 다음으로 넘김
+            2> reports/cppcheck.xml # 실패해도 true를 반환해서 다음으로 넘김
           echo "CPPCHECK_EXIT_CODE=$?" >> $GITHUB_ENV
           exit 0
 
@@ -121,7 +121,7 @@ jobs:
 
       - name: Static Analysis - clang-tidy
         run: |
-          run-clang-tidy -p build -header-filter='src/.*' > clang-tidy-report.txt || true
+          run-clang-tidy -p build -header-filter='src/.*' > clang-tidy-report.txt
       
       
       - name: Debug compile_commands first entry
