@@ -1,0 +1,20 @@
+Checks: >
+  -*,
+  bugprone-*,
+  performance-*,
+  modernize-*,
+  portability-*,
+  readability-identifier-naming,
+  readability-make-member-function-const,
+  readability-redundant-smartptr-get,
+  readability-container-size-empty
+
+WarningsAsErrors: 'bugprone-*,performance-*'
+
+CheckOptions:
+  - key:             readability-identifier-naming.VariableCase
+    value:           camelCase
+  - key:             readability-identifier-naming.FunctionCase
+    value:           camelCase
+  - key:             modernize-use-nullptr.NullMacros
+    value:           'NULL'
