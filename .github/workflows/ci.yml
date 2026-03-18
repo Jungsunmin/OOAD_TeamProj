@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "main", "develop", "feature/*" ]
+    branches: [ "main", "develop", "feature/*", "Sun" ]
   pull_request:
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential
-          sudo apt-get install -y cmake g++ clang-tidy cppcheck make lcov
+          sudo apt-get install -y cmake g++ clang-tidy cppcheck make lcov python3-pygments
 
       - name: Configure
         run: |
@@ -53,19 +53,15 @@ jobs:
           genhtml coverage.info -o coverage_html #generate HTML report
 
 
-
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          folder: coverage_html # 배포할 HTML 리포트 폴더
-          branch: gh-pages
-
       - name: Static Analysis - cppcheck
         run: |
           mkdir -p reports
 
+          set +e
           cppcheck \
             --project=build/compile_commands.json \
+            --file-filter=src/* \
+            --file-filter=tests/* \
             --enable=warning,style,performance,portability \
             --std=c++17 \
             --inline-suppr \
@@ -73,6 +69,53 @@ jobs:
             --error-exitcode=1 \
             --xml --xml-version=2 \
             2> reports/cppcheck.xml
+          echo "CPPCHECK_EXIT_CODE=$?" >> $GITHUB_ENV
+          exit 0
+
+      - name: Generate cppcheck HTML report
+        if: always()
+        run: |
+          mkdir -p cppcheck_html
+          cppcheck-htmlreport \
+            --file=reports/cppcheck.xml \
+            --report-dir=cppcheck_html \
+            --source-dir=.
+
+      - name: Prepare GitHub Pages site
+        if: always()
+        run: |
+          mkdir -p pages/coverage pages/cppcheck
+          cp -r coverage_html/. pages/coverage/
+          cp -r cppcheck_html/. pages/cppcheck/
+          cat > pages/index.html <<'HTML'
+          <!DOCTYPE html>
+          <html lang="ko">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>CI Reports</title>
+          </head>
+          <body>
+            <h1>CI Reports</h1>
+            <ul>
+              <li><a href="./coverage/index.html">Coverage Report</a></li>
+              <li><a href="./cppcheck/index.html">Cppcheck Report</a></li>
+            </ul>
+          </body>
+          </html>
+          HTML
+
+      - name: Fail if cppcheck found issues
+        if: always()
+        run: |
+          test "${CPPCHECK_EXIT_CODE}" = "0"
+
+      - name: Deploy reports to GitHub Pages
+        if: always()
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: pages # 배포할 HTML 리포트 폴더
+          branch: gh-pages
 
       - name: Static Analysis - clang-tidy
         run: |
