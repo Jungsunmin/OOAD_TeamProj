@@ -1,3 +1,4 @@
+#분석 규칙 설정
 Checks: >
   -*,
   bugprone-*,
@@ -9,8 +10,10 @@ Checks: >
   readability-redundant-smartptr-get,
   readability-container-size-empty
 
+#빌드 중단 설정
 WarningsAsErrors: 'bugprone-*,performance-*'
 
+#세부 규칙 옵션 설정
 CheckOptions:
   - key:             readability-identifier-naming.VariableCase
     value:           camelCase

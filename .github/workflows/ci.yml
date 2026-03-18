@@ -42,16 +42,20 @@ jobs:
         run: |
           ctest --test-dir build --output-on-failure
 
-          lcov --capture --directory build --output-file coverage.info --ignore-errors mismatch #data collection
+          #data collection
+          lcov --capture --directory build --output-file coverage.info --ignore-errors mismatch 
+          #exclude system and test files
           lcov --remove coverage.info \
             '/usr/*' \
             '${{ github.workspace }}/tests/*' \
             '*/_deps/*' \
             '*/build/*' \
             --output-file coverage.info \
-            --ignore-errors mismatch,unused #exclude system and test files
-          genhtml coverage.info -o coverage_html #generate HTML report
-          gcovr --sonarqube coverage.xml --filter src/  #generate SonarQube XML report for source files only
+            --ignore-errors mismatch,unused 
+          #generate HTML report
+          genhtml coverage.info -o coverage_html 
+          #generate SonarQube XML report for source files only
+          gcovr --sonarqube coverage.xml --filter src/  
 
 
       - name: Static Analysis - cppcheck
