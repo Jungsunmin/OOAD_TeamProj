@@ -69,7 +69,7 @@ jobs:
             --suppress=missingIncludeSystem \
             --error-exitcode=0 \    #0으로 설정하여 cppcheck가 문제를 발견해도 실패하지 않도록 함(기존 1에서 변경)
             --xml --xml-version=2 \
-            2> reports/cppcheck.xml || true # 실패해도 true를 반환해서 다음으로 넘김
+            2> reports/cppcheck.xml # 실패해도 true를 반환해서 다음으로 넘김
           echo "CPPCHECK_EXIT_CODE=$?" >> $GITHUB_ENV
           exit 0
 
