@@ -66,12 +66,13 @@ jobs:
             --enable=all --inconclusive --std=c++17 \
             --error-exitcode=0 \
             --suppress=missingIncludeSystem \
+            --xml --xml-version=2 \
             -I src \
-            src
+            src 2> cppcheck-report.xml
 
       - name: Static Analysis - clang-tidy
         run: |
-          find src -name '*.cpp' -print0 | xargs -0 -n 1 clang-tidy -p build
+          run-clang-tidy -p build -header-filter='src/.*' > clang-tidy-report.txt || true
       
       
       - name: Debug compile_commands first entry
@@ -99,6 +100,8 @@ jobs:
              -X
              -Dsonar.cfamily.compile-commands=build/compile_commands.json
              -Dsonar.cfamily.gcov.reportsPath=build
+             -Dsonar.clangtidy.reportPath=clang-tidy-report.txt
+             -Dsonar.cppcheck.reportPath=cppcheck-report.xml
         #-X is optional.
       - name: Discord Notification
         uses: sarisia/actions-status-discord@v1

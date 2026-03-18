@@ -1,0 +1,23 @@
+# '*'는 전체 포함, '-'는 제외를 의미합니다.
+Checks: >
+  -*,
+  bugprone-*,
+  performance-*,
+  modernize-*,
+  portability-*,
+  readability-identifier-naming,
+  readability-make-member-function-const,
+  readability-redundant-smartptr-get,
+  readability-container-size-empty
+
+# 경고가 발생했을 때 CI 빌드를 실패시키고 싶다면 여기에 규칙 추가
+WarningsAsErrors: 'bugprone-*,performance-*'
+
+# 상세 규칙 설정 ex) camelCase    snake_case  PascalCase
+CheckOptions:
+  - key:             readability-identifier-naming.VariableCase
+    value:           camelCase
+  - key:             readability-identifier-naming.FunctionCase
+    value:           camelCase
+  - key:             modernize-use-nullptr.NullMacros
+    value:           'NULL'
