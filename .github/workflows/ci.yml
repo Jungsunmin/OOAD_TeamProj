@@ -146,8 +146,10 @@ jobs:
         with:
           args: >
              -X
-             -Dsonar.scm.disabled=true
-             -Dsonar.verbose=true
+             -Dsonar.cfamily.compile-commands=build/compile_commands.json
+             -Dsonar.coverageReportPaths=coverage.xml
+             -Dsonar.cpp.clangtidy.reportPaths=clang-tidy-report.txt
+             -Dsonar.cpp.cppcheck.reportPaths=reports/cppcheck.xml
         #-X is optional.
       - name: Discord Notification
         uses: sarisia/actions-status-discord@v1
