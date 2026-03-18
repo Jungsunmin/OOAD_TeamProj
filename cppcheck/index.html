@@ -150,10 +150,10 @@
         <label class="checkBtn disabled"><input type="checkbox" onclick="toggleSeverity(this)" id="warning"disabled/>warning</label>
         <label class="checkBtn disabled"><input type="checkbox" onclick="toggleSeverity(this)" id="portability"disabled/>portability</label>
         <label class="checkBtn disabled"><input type="checkbox" onclick="toggleSeverity(this)" id="performance"disabled/>performance</label>
-        <label class="checkBtn disabled"><input type="checkbox" onclick="toggleSeverity(this)" id="style"disabled/>style</label>
+        <label class="checkBtn"><input type="checkbox" onclick="toggleSeverity(this)" id="style"checked/>style</label>
         <label class="checkBtn disabled"><input type="checkbox" onclick="toggleSeverity(this)" id="information"disabled/>information</label>
         | 
-        <label class="checkBtn disabled"><input type="checkbox" onclick="toggleTool(this)" id="cppcheck"disabled/>cppcheck</label>
+        <label class="checkBtn"><input type="checkbox" onclick="toggleTool(this)" id="cppcheck"checked/>cppcheck</label>
         <label class="checkBtn disabled"><input type="checkbox" onclick="toggleTool(this)" id="clang-tidy"disabled/>clang-tidy</label>
         | 
         <label class="severityHeader">File: <input type="text" oninput="filterFile(this.value)"/></label>
@@ -168,7 +168,10 @@
        <label><input type="checkbox" class="idToggle" onclick="toggleAll()" checked> Toggle all</label>
        <table>
            <tr><th>Show</th><th>#</th><th>Defect ID</th></tr>
-           <tr><td></td><td>0</td><td>total</td></tr>
+            <tr><td><input type="checkbox" class="idToggle" onclick="toggleDisplay(this)" id="constVariablePointer" name="constVariablePointer" checked></td><td>1</td><td>constVariablePointer</td></tr>
+            <tr><td><input type="checkbox" class="idToggle" onclick="toggleDisplay(this)" id="knownConditionTrueFalse" name="knownConditionTrueFalse" checked></td><td>1</td><td>knownConditionTrueFalse</td></tr>
+            <tr><td><input type="checkbox" class="idToggle" onclick="toggleDisplay(this)" id="variableScope" name="variableScope" checked></td><td>1</td><td>variableScope</td></tr>
+           <tr><td></td><td>3</td><td>total</td></tr>
        </table>
        <p><a href="stats.html">Statistics</a></p>
     </div>
@@ -176,6 +179,12 @@
 
        <table class="summaryTable">
        <tr><th>Line</th><th>Id</th><th>CWE</th><th>Severity</th><th>Message</th></tr>
+      <tbody class="fileEntry">
+       <tr><td colspan="5">src/main.cpp</td></tr>
+       <tr><td colspan="5">Could not generated due to UnicodeDecodeError</td></tr>
+         <tr class="constVariablePointer sev_style issue"><td></td><td>constVariablePointer</td><td><a href="https://cwe.mitre.org/data/definitions/398.html">398</a></td><td>style</td><td>Variable &apos;ptr&apos; can be declared as pointer to const</td></tr>
+         <tr class="variableScope sev_style issue"><td></td><td>variableScope</td><td><a href="https://cwe.mitre.org/data/definitions/398.html">398</a></td><td>style</td><td>The scope of the variable &apos;My_Local_Variable&apos; can be reduced.</td></tr>
+         <tr class="knownConditionTrueFalse sev_style issue"><td></td><td>knownConditionTrueFalse</td><td><a href="https://cwe.mitre.org/data/definitions/571.html">571</a></td><td>style</td><td>Condition &apos;ptr==NULL&apos; is always true</td></tr>
       </tbody>
        </table>
     </div>
