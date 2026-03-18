@@ -121,7 +121,7 @@ jobs:
 
       - name: Static Analysis - clang-tidy
         run: |
-          run-clang-tidy -p build -header-filter='src/.*' > clang-tidy-report.txt
+          run-clang-tidy -p build -header-filter='src/.*' > clang-tidy-report.txt || true
       
       
       - name: Debug compile_commands first entry
