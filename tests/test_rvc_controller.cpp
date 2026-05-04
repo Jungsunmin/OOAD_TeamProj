@@ -4,67 +4,84 @@
 // Test fixture for RVC Controller
 class RvcControllerTest : public ::testing::Test {
 protected:
-    DustSensor ds;
+    Motor leftMotor, rightMotor;
     FrontObstacleSensor fs;
-    SideObstacleSensor ss;
-    RvcController* rvc;
+    SideObstacleSensor ls, rs; 
+    DustSensor ds;
+    
+    ObstacleSensorInterface* osi;
+    DustSensorInterface* dsi;
+    PathPlanner* planner;
+    DriveManager* driver;
+    CleanerManager* cleaner;
+    Controller* controller;
 
     void SetUp() override {
-        rvc = new RvcController(&ds, &fs, &ss);
+        osi = new ObstacleSensorInterface(&fs, &ls, &rs);
+        dsi = new DustSensorInterface(&ds);
+        planner = new PathPlanner(osi);
+        driver = new DriveManager(&leftMotor, &rightMotor, planner, Driving::STOP);
+        cleaner = new CleanerManager();
+        controller = new Controller(driver, cleaner, dsi);
+        controller->setObstacleSensorInterface(osi);
     }
 
     void TearDown() override {
-        delete rvc;
+        delete controller;
+        delete cleaner;
+        delete driver;
+        delete planner;
+        delete dsi;
+        delete osi;
     }
 };
 
 TEST_F(RvcControllerTest, InitialStateIsOff) {
     // By default, system should be off. 
-    // We can't easily check private 'isOn', but we can check if it stays stopped.
-    rvc->interruptHandler(); 
-    // If it were on, it would print something.
+    controller->interruptHandler(); 
+    EXPECT_EQ(cleaner->getCurrentMode(), CleanerMode::OFF);
 }
 
 TEST_F(RvcControllerTest, StartsCleaningCorrectly) {
-    rvc->turnOn();
-    // In a real test, we might mock Motor/Cleaner to verify calls.
-    // For now, we trust the output and basic state transitions.
+    controller->turnOn();
+    EXPECT_EQ(cleaner->getCurrentMode(), CleanerMode::ON);
+    EXPECT_EQ(driver->getCurrentState(), Driving::MOVEFORWARD);
 }
 
 TEST_F(RvcControllerTest, BoostsWhenDustDetected) {
-    rvc->turnOn();
+    controller->turnOn();
     ds.setDust(true);
-    rvc->interruptHandler(); // Should detect dust and boost
-    // We can observe the behavior in simulation
+    controller->interruptHandler(); // Should detect dust and boost
+    EXPECT_EQ(cleaner->getCurrentMode(), CleanerMode::UP);
 }
 
 TEST_F(RvcControllerTest, AvoidsFrontObstacle) {
-    rvc->turnOn();
+    controller->turnOn();
     fs.setBlocked(true);
-    rvc->interruptHandler(); // Should detect obstacle and start avoiding
+    controller->interruptHandler(); // Should detect obstacle and start avoiding
+    EXPECT_NE(driver->getCurrentState(), Driving::MOVEFORWARD);
 }
 
 TEST_F(RvcControllerTest, PathPlannerLogic) {
-    PathPlanner planner;
-    
     // Front blocked, left/right clear -> Turn Left
-    EXPECT_EQ(planner.decisionPath({true, false, false}), DrivingMode::TURN_LEFT);
+    fs.setBlocked(true);
+    ls.setStatus(false, false);
+    rs.setStatus(false, false);
+    planner->decisionPath();
+    EXPECT_EQ(planner->getSelectedDriving(), Driving::TURNLEFT);
     
     // Front and Left blocked -> Turn Right
-    EXPECT_EQ(planner.decisionPath({true, true, false}), DrivingMode::TURN_RIGHT);
+    ls.setStatus(true, false);
+    planner->decisionPath();
+    EXPECT_EQ(planner->getSelectedDriving(), Driving::TURNRIGHT);
     
     // All front/sides blocked -> Move Backward
-    EXPECT_EQ(planner.decisionPath({true, true, true}), DrivingMode::MOVE_BACKWARD);
+    rs.setStatus(false, true); // right side sensor
+    planner->decisionPath();
+    EXPECT_EQ(planner->getSelectedDriving(), Driving::MOVEBACKWARD);
     
     // No obstacle -> Move Forward
-    EXPECT_EQ(planner.decisionPath({false, false, false}), DrivingMode::MOVE_FORWARD);
-}
-
-// Legacy support tests
-TEST(RvcLegacyTest, LegacyNextAction) {
-    RvcController c;
-    EXPECT_STREQ(c.next_action(false, false, false, false), "GO_STRAIGHT");
-    EXPECT_STREQ(c.next_action(false, false, false, true), "BOOST_CLEANING");
-    EXPECT_STREQ(c.next_action(true, false, false, false), "STOP_AND_AVOID_TURN");
-    EXPECT_STREQ(c.next_action(true, true, true, false), "REVERSE_THEN_TURN");
+    fs.setBlocked(false);
+    planner->decisionPath();
+    EXPECT_EQ(planner->getSelectedDriving(), Driving::MOVEFORWARD);
 }

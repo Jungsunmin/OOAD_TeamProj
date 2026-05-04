@@ -193,7 +193,7 @@ void Controller::errorturnOff() {
     turnOff();
 }
 
-void Controller::trunOn() {
+void Controller::turnOn() {
     std::cout << "Controller: System ON\n";
     cleanerManager->cleanerMode(CleanerMode::ON);
     driveManager->resumeLeft(); // Initial move
@@ -231,7 +231,7 @@ Button::Button(Controller* ctrl) : controller(ctrl) {}
 
 void Button::pushButtonOn() {
     std::cout << "Button: ON\n";
-    if (controller) controller->trunOn();
+    if (controller) controller->turnOn();
 }
 
 void Button::pushButtonOff() {
