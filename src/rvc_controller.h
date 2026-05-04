@@ -129,7 +129,7 @@ public:
 //     // Internal helper
 //     CleanerMode getCurrentMode() const;
 //     bool isBoostPeriodOver();
-// };
+// };/
 
 class Controller {
 private:

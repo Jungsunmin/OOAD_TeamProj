@@ -212,7 +212,7 @@ void Controller::clearDustValue() {
 //     std::cout << "Controller: System ON\n";
 //     cleanerManager->cleanerMode(CleanerMode::ON);
 //     driveManager->resumeLeft(); // Initial move
-// }
+// }/
 
 void Controller::resumeSideSensorCheck() {
     while(obstacleSensorInterface->isLeftBlocked() && obstacleSensorInterface->isRightBlocked()) {
