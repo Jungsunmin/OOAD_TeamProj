@@ -185,7 +185,7 @@ public:
     Controller(DriveManager* drive, CleanerManager* cleaner, DustSensorInterface* dustSensorInterface);
     void interruptHandler();
     void errorturnOff();
-    void trunOn(); 
+    void turnOn(); 
     void turnOff();
     void turnRightOver();
     void turnLeftOver();
