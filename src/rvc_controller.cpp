@@ -1,191 +1,202 @@
 #include "rvc_controller.h"
 
-// --- Motor Implementation ---
-void Motor::rotateForward() { std::cout << "Motor: Forward\n"; }
-void Motor::rotateBackward() { std::cout << "Motor: Backward\n"; }
-void Motor::rotateLeft() { std::cout << "Motor: Left\n"; }
-void Motor::rotateRight() { std::cout << "Motor: Right\n"; }
-void Motor::stopMotor() { std::cout << "Motor: Stop\n"; }
+// // --- Motor Implementation ---
+// void Motor::rotateForward() { std::cout << "Motor: Forward\n"; }
+// void Motor::rotateBackward() { std::cout << "Motor: Backward\n"; }
+// void Motor::rotateLeft() { std::cout << "Motor: Left\n"; }
+// void Motor::rotateRight() { std::cout << "Motor: Right\n"; }
+// void Motor::stopMotor() { std::cout << "Motor: Stop\n"; }
 
-// --- Sensor Implementations ---
-void FrontObstacleSensor::setBlocked(bool b) { blocked = b; }
-bool FrontObstacleSensor::isBlocked() const { return blocked; }
+// // --- Sensor Implementations ---
+// void FrontObstacleSensor::setBlocked(bool b) { blocked = b; }
+// bool FrontObstacleSensor::isBlocked() const { return blocked; }
 
-void SideObstacleSensor::setStatus(bool l, bool r) { leftBlocked = l; rightBlocked = r; }
-bool SideObstacleSensor::isLeftBlocked() const { return leftBlocked; }
-bool SideObstacleSensor::isRightBlocked() const { return rightBlocked; }
+// void SideObstacleSensor::setStatus(bool l, bool r) { leftBlocked = l; rightBlocked = r; }
+// bool SideObstacleSensor::isLeftBlocked() const { return leftBlocked; }
+// bool SideObstacleSensor::isRightBlocked() const { return rightBlocked; }
 
-void DustSensor::setDust(bool d) { dustDetected = d; }
-bool DustSensor::isDustExist() const { return dustDetected; }
+// void DustSensor::setDust(bool d) { dustDetected = d; }
+// bool DustSensor::isDustExist() const { return dustDetected; }
 
 // --- Timer Implementation ---
-Timer::Timer(bool isRunning) : duration(0), isRunning(isRunning) {}
+Timer::Timer(unsigned long duration, bool isRunning = false, std::function<void()> timerCallback)
+ : duration(duration), isRunning(isRunning), timerCallback(timerCallback) {}
 
 void Timer::setTimer() {
-    startTime = std::chrono::steady_clock::now();
     isRunning = true;
-}
-
-void Timer::clearTimer() {
+    usleep(duration);
+    if(isRunning == false) return;   //timerOff()가 실행될 경우 실행됨
     isRunning = false;
+    timerCallback();
+    return;
 }
 
-bool Timer::checkTimer() {
-    if (!isRunning) return false;
-    auto now = std::chrono::steady_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime).count();
-    if (elapsed >= (long long)duration) {
-        isRunning = false;
-        return true;
-    }
-    return false;
+void Timer::timerOff() {
+    isRunning = false;
+    return;
 }
 
-void Timer::setDuration(unsigned long ms) { 
-    duration = ms; 
-}
+// // --- ObstacleSensorInterface Implementation ---
+// ObstacleSensorInterface::ObstacleSensorInterface(FrontObstacleSensor* front, SideObstacleSensor* left, SideObstacleSensor* right)
+//     : frontSensor(front), leftSensor(left), rightSensor(right) {}
 
-// --- ObstacleSensorInterface Implementation ---
-ObstacleSensorInterface::ObstacleSensorInterface(FrontObstacleSensor* front, SideObstacleSensor* left, SideObstacleSensor* right)
-    : frontSensor(front), leftSensor(left), rightSensor(right) {}
+// void ObstacleSensorInterface::hardwareISR() {
+//     if (onEmergencyCallback) onEmergencyCallback();
+// }
 
-void ObstacleSensorInterface::hardwareISR() {
-    if (onEmergencyCallback) onEmergencyCallback();
-}
+// bool ObstacleSensorInterface::isFrontBlocked() {
+//     return frontSensor->isBlocked();
+// }
 
-bool ObstacleSensorInterface::isFrontBlocked() {
-    return frontSensor->isBlocked();
-}
+// bool ObstacleSensorInterface::isLeftBlocked() {
+//     return leftSensor->isLeftBlocked();
+// }
 
-bool ObstacleSensorInterface::isLeftBlocked() {
-    return leftSensor->isLeftBlocked();
-}
+// bool ObstacleSensorInterface::isRigntBlocked() {
+//     return rightSensor->isRightBlocked();
+// }
 
-bool ObstacleSensorInterface::isRigntBlocked() {
-    return rightSensor->isRightBlocked();
-}
+// ObstacleStatus ObstacleSensorInterface::isObstacleExist() {
+//     return {isFrontBlocked(), isLeftBlocked(), isRigntBlocked()};
+// }
 
-ObstacleStatus ObstacleSensorInterface::isObstacleExist() {
-    return {isFrontBlocked(), isLeftBlocked(), isRigntBlocked()};
-}
+// void ObstacleSensorInterface::attachInterrupt(std::function<void()> callback) {
+//     onEmergencyCallback = callback;
+// }
 
-void ObstacleSensorInterface::attachInterrupt(std::function<void()> callback) {
-    onEmergencyCallback = callback;
-}
+// // --- DustSensorInterface Implementation ---
+// DustSensorInterface::DustSensorInterface(DustSensor* dustSensor) : dustSensor(dustSensor) {}
 
-// --- DustSensorInterface Implementation ---
-DustSensorInterface::DustSensorInterface(DustSensor* dustSensor) : dustSensor(dustSensor) {}
+// bool DustSensorInterface::isDustExistence() {
+//     return dustSensor->isDustExist();
+// }
 
-bool DustSensorInterface::isDustExistence() {
-    return dustSensor->isDustExist();
-}
+// // --- PathPlanner Implementation ---
+// PathPlanner::PathPlanner(ObstacleSensorInterface* osi) : obstacleSensorInterface(osi) {}
 
-// --- PathPlanner Implementation ---
-PathPlanner::PathPlanner(ObstacleSensorInterface* osi) : obstacleSensorInterface(osi) {}
+// Location PathPlanner::decisionPath() {
+//     currentObstacleStatus = obstacleSensorInterface->isObstacleExist();
+// }
 
-void PathPlanner::decisionPath() {
-    currentObstacleStatus = obstacleSensorInterface->isObstacleExist();
-}
-
-Driving PathPlanner::getSelectedDriving() {
-    if (currentObstacleStatus.frontBlocked) {
-        if (!currentObstacleStatus.leftBlocked) return Driving::TURNLEFT;
-        if (!currentObstacleStatus.rightBlocked) return Driving::TURNRIGHT;
-        return Driving::MOVEBACKWARD;
-    }
-    return Driving::MOVEFORWARD;
-}
+// Driving PathPlanner::getSelectedDriving() {
+//     if (currentObstacleStatus.frontBlocked) {
+//         if (!currentObstacleStatus.leftBlocked) return Driving::TURNLEFT;
+//         if (!currentObstacleStatus.rightBlocked) return Driving::TURNRIGHT;
+//         return Driving::MOVEBACKWARD;
+//     }
+//     return Driving::MOVEFORWARD;
+// }
 
 // --- DriveManager Implementation ---
-DriveManager::DriveManager(Motor* left, Motor* right, PathPlanner* pathPlanner, Driving initialState)
-    : leftMotor(left), rightMotor(right), pathPlanner(pathPlanner), currentDriveState(initialState), controller(nullptr) {}
+DriveManager::DriveManager(PathPlanner* pathPlanner, Driving initialState, Controller* controller)
+    : pathPlanner(pathPlanner), currentDriveState(initialState), controller(controller) {}
 
-void DriveManager::avoidObstacle() {
-    pathPlanner->decisionPath();
-    currentDriveState = pathPlanner->getSelectedDriving();
+Location DriveManager::avoidObstacle() {
+    stopMotor();    //
+    location = pathPlanner->decisionPath();
     
-    if (currentDriveState == Driving::TURNLEFT) {
-        leftMotor->rotateLeft();
-        rightMotor->rotateLeft();
-        timer.setDuration(100);
+    if (location == Location::LEFT) {
+        rotateLeft();   //
         timer.setTimer();
-    } else if (currentDriveState == Driving::TURNRIGHT) {
-        leftMotor->rotateRight();
-        rightMotor->rotateRight();
-        timer.setDuration(100);
+        stopMotor();    //
+        rotateForward();    //
+        return Location::LEFT;
+    } else if (location == Location::RIGHT) {
+        rotateRight();   //
         timer.setTimer();
-    } else if (currentDriveState == Driving::MOVEBACKWARD) {
-        leftMotor->rotateBackward();
-        rightMotor->rotateBackward();
-        timer.setDuration(200);
-        timer.setTimer();
-    } else {
-        leftMotor->rotateForward();
-        rightMotor->rotateForward();
-    }
+        stopMotor();    //
+        rotateForward();    //
+        return Location::RIGHT;
+    } else if (location == Location::REAR) {
+        rotateBackward();   //
+        return Location::REAR;
+    } 
+    return Location::FRONT;
+}
+
+void DriveManager::resumeForward() {
+    rotateForward(); //
+    return;
 }
 
 void DriveManager::resumeLeft() {
-    std::cout << "DriveManager: Resume Left\n";
-    currentDriveState = Driving::MOVEFORWARD;
-    leftMotor->rotateForward();
-    rightMotor->rotateForward();
+    stopMotor(); //
+    rotateLeft();   //
+    timer.setTimer();
+    stopMotor();    //
+    rotateForward();
+    return;
 }
 
 void DriveManager::resumeRight() {
-    std::cout << "DriveManager: Resume Right\n";
-    currentDriveState = Driving::MOVEFORWARD;
-    leftMotor->rotateForward();
-    rightMotor->rotateForward();
+    stopMotor(); //
+    rotateRight();   //
+    timer.setTimer();
+    stopMotor();    //
+    rotateForward();
+    return;
 }
 
-void DriveManager::setController(Controller* ctrl) { 
-    controller = ctrl; 
+void DriveManager::stop() {
+    stopMotor(); //
+    return;
 }
 
-Driving DriveManager::getCurrentState() const { 
-    return currentDriveState; 
-}
 
-// --- CleanerManager Implementation ---
-void CleanerManager::cleanerMode(CleanerMode initialMode) {
-    currentCleanerMode = initialMode;
-    if (initialMode == CleanerMode::UP) {
-        timer.setDuration(300);
-        timer.setTimer();
-    }
-}
+// // --- CleanerManager Implementation ---
+// void CleanerManager::cleanerMode(CleanerMode initialMode) {
+//     currentCleanerMode = initialMode;
+//     if (initialMode == CleanerMode::UP) {
+//         timer.setDuration(300);
+//         timer.setTimer();
+//     }
+// }
 
-CleanerMode CleanerManager::getCurrentMode() const { 
-    return currentCleanerMode; 
-}
+// CleanerMode CleanerManager::getCurrentMode() const { 
+//     return currentCleanerMode; 
+// }
 
-bool CleanerManager::isBoostPeriodOver() { 
-    return timer.checkTimer(); 
-}
+// bool CleanerManager::isBoostPeriodOver() { 
+//     return timer.checkTimer(); 
+// }
 
 // --- Controller Implementation ---
-Controller::Controller(DriveManager* drive, CleanerManager* cleaner, DustSensorInterface* dsi)
-    : driveManager(drive), cleanerManager(cleaner), dustSensorInterface(dsi), obstacleSensorInterface(nullptr) {
-    if (driveManager) driveManager->setController(this);
-}
+Controller::Controller(DriveManager* drive, CleanerManager* cleaner, DustSensorInterface* dsi, ObstacleSensorInterface* osi)
+    : driveManager(drive), cleanerManager(cleaner), dustSensorInterface(dsi), obstacleSensorInterface(osi) {}
 
 void Controller::interruptHandler() {
-    if (obstacleSensorInterface && (obstacleSensorInterface->isFrontBlocked() || 
-        obstacleSensorInterface->isLeftBlocked() || obstacleSensorInterface->isRigntBlocked())) {
-        std::cout << "Controller: Interrupt Detected!\n";
-        driveManager->avoidObstacle();
+    cleanerManager->cleanerMode(CleanerMode::OFF);
+    Location turnLocation = driveManager->avoidObstacle();
+    if(turnLocation == Location::LEFT) {
+        if(!obstacleSensorInterface->isRightBlocked()) {
+            errorturnOff();
+        }
+    } else if (turnLocation == Location::RIGHT) {
+        if(!obstacleSensorInterface->isLeftBlocked()) {
+            errorturnOff();
+        }
+    } else if (turnLocation == Location::REAR) {
+        resumeSideSensorCheck();
     }
+    cleanerManager->cleanerMode(CleanerMode::ON);
+    clearDustValue();
+}
+void Controller::turnOn() {
+    onOff = true;
+    dustSensorInterface->isDustExistence();
+    obstacleSensorInterface->isObstacleExist();
+    attachInterrupt(interruptHandler);  //
 
-    if (cleanerManager->getCurrentMode() == CleanerMode::ON && dustSensorInterface->isDustExistence()) {
-        std::cout << "Controller: Dust Detected!\n";
-        cleanerManager->cleanerMode(CleanerMode::UP);
-    }
+    cleanerManager->cleanerMode(CleanerMode::ON);
+    driveManager->resumeForward();
+}
 
-    if (cleanerManager->isBoostPeriodOver()) {
-        std::cout << "Controller: Boost Finished\n";
-        cleanerManager->cleanerMode(CleanerMode::ON);
-    }
+
+
+void Controller::turnOff() {
+    onOff = false;
+    cleanerManager->cleanerMode(CleanerMode::OFF);
+    driveManager->stop();
 }
 
 void Controller::errorturnOff() {
@@ -193,39 +204,41 @@ void Controller::errorturnOff() {
     turnOff();
 }
 
-void Controller::turnOn() {
-    std::cout << "Controller: System ON\n";
-    cleanerManager->cleanerMode(CleanerMode::ON);
-    driveManager->resumeLeft(); // Initial move
+void Controller::clearDustValue() {
+    clearValue = true;
 }
 
-void Controller::turnOff() {
-    std::cout << "Controller: System OFF\n";
-    cleanerManager->cleanerMode(CleanerMode::OFF);
-}
-
-void Controller::turnRightOver() {
-    std::cout << "Controller: Turn Right Over\n";
-    resumeSideSensorCheck();
-}
-
-void Controller::turnLeftOver() {
-    std::cout << "Controller: Turn Left Over\n";
-    resumeSideSensorCheck();
-}
+// void Controller::turnOn() {
+//     std::cout << "Controller: System ON\n";
+//     cleanerManager->cleanerMode(CleanerMode::ON);
+//     driveManager->resumeLeft(); // Initial move
+// }
 
 void Controller::resumeSideSensorCheck() {
-    if (obstacleSensorInterface && !obstacleSensorInterface->isFrontBlocked()) {
+    while(obstacleSensorInterface->isLeftBlocked() && obstacleSensorInterface->isRightBlocked()) {
+        usleep(100000);
+        continue;
+    }
+    if (!obstacleSensorInterface->isLeftBlocked()) {
         driveManager->resumeLeft();
     } else {
-        driveManager->avoidObstacle();
+        driveManager->resumeRight();
     }
 }
 
-void Controller::setObstacleSensorInterface(ObstacleSensorInterface* osi) { 
-    obstacleSensorInterface = osi; 
+void Controller::dustDetect() {
+    while(true) {
+        usleep(100000);
+        if(dustSensorInterface->isDustExistence()) {
+            cleanerManager->cleanerMode(CleanerMode::UP);
+        }
+        if(clearValue) {
+            cleanerManager->cleanerMode(CleanerMode::ON);
+            clearValue = false;
+        }
+        if(!onOff) break;
+    }
 }
-
 // --- Button Implementation ---
 Button::Button(Controller* ctrl) : controller(ctrl) {}
 
