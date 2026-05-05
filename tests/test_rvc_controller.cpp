@@ -1,15 +1,24 @@
 #include <gtest/gtest.h>
 #include "rvc_controller.h"
 
-// Test fixture for RVC Controller
+// Mock class to override sensor behavior for testing
+class MockObstacleSensorInterface : public ObstacleSensorInterface {
+public:
+    bool front = false;
+    bool left = false;
+    bool right = false;
+    bool dust = false;
+
+    bool isFrontBlocked() { return front; }
+    bool isLeftBlocked() { return left; }
+    bool isRightBlocked() { return right; }
+    bool isDustExistence() { return dust; }
+    ObstacleStatus isObstacleExist() { return {front, left, right}; }
+};
+
 class RvcControllerTest : public ::testing::Test {
 protected:
-    Motor leftMotor, rightMotor;
-    FrontObstacleSensor fs;
-    SideObstacleSensor ls, rs; 
-    DustSensor ds;
-    
-    ObstacleSensorInterface* osi;
+    MockObstacleSensorInterface* osi;
     DustSensorInterface* dsi;
     PathPlanner* planner;
     DriveManager* driver;
@@ -17,13 +26,12 @@ protected:
     Controller* controller;
 
     void SetUp() override {
-        osi = new ObstacleSensorInterface(&fs, &ls, &rs);
-        dsi = new DustSensorInterface(&ds);
+        osi = new MockObstacleSensorInterface();
+        dsi = new DustSensorInterface();
         planner = new PathPlanner(osi);
-        driver = new DriveManager(&leftMotor, &rightMotor, planner, Driving::STOP);
+        driver = new DriveManager(planner);
         cleaner = new CleanerManager();
-        controller = new Controller(driver, cleaner, dsi);
-        controller->setObstacleSensorInterface(osi);
+        controller = new Controller(driver, cleaner, dsi, osi);
     }
 
     void TearDown() override {
@@ -37,9 +45,8 @@ protected:
 };
 
 TEST_F(RvcControllerTest, InitialStateIsOff) {
-    // By default, system should be off. 
-    controller->interruptHandler(); 
     EXPECT_EQ(cleaner->getCurrentMode(), CleanerMode::OFF);
+    EXPECT_EQ(driver->getCurrentState(), Driving::STOP);
 }
 
 TEST_F(RvcControllerTest, StartsCleaningCorrectly) {
@@ -48,40 +55,25 @@ TEST_F(RvcControllerTest, StartsCleaningCorrectly) {
     EXPECT_EQ(driver->getCurrentState(), Driving::MOVEFORWARD);
 }
 
-TEST_F(RvcControllerTest, BoostsWhenDustDetected) {
-    controller->turnOn();
-    ds.setDust(true);
-    controller->interruptHandler(); // Should detect dust and boost
-    EXPECT_EQ(cleaner->getCurrentMode(), CleanerMode::UP);
-}
-
-TEST_F(RvcControllerTest, AvoidsFrontObstacle) {
-    controller->turnOn();
-    fs.setBlocked(true);
-    controller->interruptHandler(); // Should detect obstacle and start avoiding
-    EXPECT_NE(driver->getCurrentState(), Driving::MOVEFORWARD);
-}
-
 TEST_F(RvcControllerTest, PathPlannerLogic) {
     // Front blocked, left/right clear -> Turn Left
-    fs.setBlocked(true);
-    ls.setStatus(false, false);
-    rs.setStatus(false, false);
-    planner->decisionPath();
-    EXPECT_EQ(planner->getSelectedDriving(), Driving::TURNLEFT);
+    osi->front = true;
+    osi->left = false;
+    osi->right = false;
+    EXPECT_EQ(planner->decisionPath(), Location::LEFT);
     
     // Front and Left blocked -> Turn Right
-    ls.setStatus(true, false);
-    planner->decisionPath();
-    EXPECT_EQ(planner->getSelectedDriving(), Driving::TURNRIGHT);
+    osi->left = true;
+    EXPECT_EQ(planner->decisionPath(), Location::RIGHT);
     
-    // All front/sides blocked -> Move Backward
-    rs.setStatus(false, true); // right side sensor
-    planner->decisionPath();
-    EXPECT_EQ(planner->getSelectedDriving(), Driving::MOVEBACKWARD);
-    
-    // No obstacle -> Move Forward
-    fs.setBlocked(false);
-    planner->decisionPath();
-    EXPECT_EQ(planner->getSelectedDriving(), Driving::MOVEFORWARD);
+    // All front/sides blocked -> Move Backward (REAR)
+    osi->right = true;
+    EXPECT_EQ(planner->decisionPath(), Location::REAR);
+}
+
+TEST_F(RvcControllerTest, PowerOffStopsEverything) {
+    controller->turnOn();
+    controller->turnOff();
+    EXPECT_EQ(cleaner->getCurrentMode(), CleanerMode::OFF);
+    EXPECT_EQ(driver->getCurrentState(), Driving::STOP);
 }

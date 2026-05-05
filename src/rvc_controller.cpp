@@ -80,7 +80,9 @@ void ObstacleSensorInterface::listen() {
 
             std::string type = get_json_value(msg, "type");
             if (type == "INTERRUPT") {
-                if (onEmergency) onEmergency();
+                if (onEmergency) {
+                    std::thread([this](){ this->onEmergency(); }).detach();
+                }
             } 
             else if (type == "EVENT") {
                 std::string name = get_json_value(msg, "name");
@@ -88,6 +90,7 @@ void ObstacleSensorInterface::listen() {
                 if (ctrl_ref) {
                     if (name == "BUTTON_ON") ctrl_ref->turnOn();
                     else if (name == "BUTTON_OFF") ctrl_ref->turnOff();
+                    else if (name == "RESET") ctrl_ref->resetController();
                 }
             } else {
                 // Check for sensor values
@@ -114,16 +117,22 @@ bool ObstacleSensorInterface::isFrontBlocked() {
 }
 
 bool ObstacleSensorInterface::isLeftBlocked() {
+    SimulatorBridge::getInstance().send_cmd("{\"type\": \"GET_SENSORS\"}");
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
     std::lock_guard<std::mutex> lock(sensorMutex);
     return last_left <= thresholdside;
 }
 
 bool ObstacleSensorInterface::isRightBlocked() {
+    SimulatorBridge::getInstance().send_cmd("{\"type\": \"GET_SENSORS\"}");
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
     std::lock_guard<std::mutex> lock(sensorMutex);
     return last_right <= thresholdside;
 }
 
 ObstacleStatus ObstacleSensorInterface::isObstacleExist() {
+    SimulatorBridge::getInstance().send_cmd("{\"type\": \"GET_SENSORS\"}");
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
     std::lock_guard<std::mutex> lock(sensorMutex);
     return {last_front <= threshold, last_left <= thresholdside, last_right <= thresholdside};
 }
@@ -147,26 +156,22 @@ Location PathPlanner::decisionPath() {
         if (osi->isRightBlocked()) return Location::REAR;
         else return Location::RIGHT;
     } else return Location::LEFT;
-
-    return Location::LEFT; 
 }
 
 // --- DriveManager ---
 DriveManager::DriveManager(PathPlanner* pp) : pathPlanner(pp), currentDriveState(Driving::STOP), turnTimer(1020) {}
 void DriveManager::sendDriveCommand(Driving state) {
     currentDriveState = state;
+    int moveVal = 0;
+    if (state == Driving::MOVEFORWARD) moveVal = 1;
+    else if (state == Driving::MOVEBACKWARD) moveVal = -1;
 
-    std::string is_forward = (state == Driving::MOVEFORWARD) ? "true" : "false";
-    std::string is_backward = (state == Driving::MOVEBACKWARD) ? "true" : "false";
-    std::string turn_str = "0";
+    int turnVal = 0;
+    if (state == Driving::TURNLEFT) turnVal = -1;
+    else if (state == Driving::TURNRIGHT) turnVal = 1;
 
-    if (state == Driving::TURNLEFT) turn_str = "-1";
-    else if (state == Driving::TURNRIGHT) turn_str = "1";
-
-    std::string cmd = "{\"type\": \"SET_CONTROL\", \"move\": " + is_forward + 
-                      ", \"backward\": " + is_backward +
-                      ", \"turn\": " + turn_str + "}";
-
+    std::string cmd = "{\"type\": \"SET_CONTROL\", \"move\": " + std::to_string(moveVal) + 
+                      ", \"turn\": " + std::to_string(turnVal) + "}";
     SimulatorBridge::getInstance().send_cmd(cmd);
 }
 Location DriveManager::avoidObstacle() {
@@ -244,60 +249,51 @@ Controller::Controller(DriveManager* d, CleanerManager* c, DustSensorInterface* 
 Controller::~Controller() { 
     onOff = false; 
     if (dustThread.joinable()) dustThread.join(); 
-    if (obstacleThread.joinable()) obstacleThread.join();
 }
 
 void Controller::interruptHandler() {
-    // Refactored to avoidanceLoop
-}
+    if (!onOff) return;
+    
+    {
+        std::lock_guard<std::mutex> lock(ctrlMutex);
+        isAvoiding = true;
+    }
 
-void Controller::avoidanceLoop() {
-    while(onOff) {
-        if (obstacleSensorInterface->isFrontBlocked()) {
-            {
-                std::lock_guard<std::mutex> lock(ctrlMutex);
-                isAvoiding = true;
-            }
-
-            std::cout << "[System] Obstacle Detected! Starting Avoidance..." << std::endl;
-            cleanerManager->cleanerMode(CleanerMode::OFF);
-            
-            Location turnLocation = driveManager->avoidObstacle();
-            
-            if (turnLocation == Location::LEFT) {
-                if (obstacleSensorInterface->isRightBlocked()) {
-                    errorturnOff();
-                } else {
-                    cleanerManager->cleanerMode(CleanerMode::ON);
-                }
-            } else if (turnLocation == Location::RIGHT) {
-                if (obstacleSensorInterface->isLeftBlocked()) {
-                    errorturnOff();
-                } else {
-                    cleanerManager->cleanerMode(CleanerMode::ON);
-                }
-            } else {
-                while(onOff) {
-                    obstacleSensorInterface->isFrontBlocked(); 
-                    if (!obstacleSensorInterface->isLeftBlocked()){
-                        driveManager->rotateLeftb();
-                        break;
-                    }
-                    else if (!obstacleSensorInterface->isRightBlocked()){
-                        driveManager->rotateRightb();
-                        break;
-                    }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                }
-                cleanerManager->cleanerMode(CleanerMode::ON);
-            }
-
-            {
-                std::lock_guard<std::mutex> lock(ctrlMutex);
-                isAvoiding = false;
-            }
+    std::cout << "[System] INTERRUPT: Obstacle Avoidance Triggered!" << std::endl;
+    cleanerManager->cleanerMode(CleanerMode::OFF);
+    Location turnLocation = driveManager->avoidObstacle();
+    
+    if (turnLocation == Location::LEFT) {
+        if (!obstacleSensorInterface->isRightBlocked()) {
+            errorturnOff();
+        }else{
+            cleanerManager->cleanerMode(CleanerMode::ON);
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    } else if (turnLocation == Location::RIGHT) {
+        if (!obstacleSensorInterface->isLeftBlocked()) {
+            errorturnOff();
+        }else cleanerManager->cleanerMode(CleanerMode::ON);
+    }else{
+        std::cout << "[System] All sides blocked. Moving backward until a side is clear..." << std::endl;
+        while (onOff){
+            if (!obstacleSensorInterface->isLeftBlocked()){
+                driveManager->rotateLeftb();
+                break;
+            }
+            else if (!obstacleSensorInterface->isRightBlocked()){
+                driveManager->rotateRightb();
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        if (onOff) cleanerManager->cleanerMode(CleanerMode::ON);
+    }
+    
+   
+
+    {
+        std::lock_guard<std::mutex> lock(ctrlMutex);
+        isAvoiding = false;
     }
 }
 
@@ -332,9 +328,6 @@ void Controller::turnOn() {
     
     if (dustThread.joinable()) dustThread.join();
     dustThread = std::thread(&Controller::dustDetect, this);
-
-    if (obstacleThread.joinable()) obstacleThread.join();
-    obstacleThread = std::thread(&Controller::avoidanceLoop, this);
 }
 
 void Controller::turnOff() {
@@ -343,7 +336,19 @@ void Controller::turnOff() {
     onOff = false;
     
     if (dustThread.joinable()) dustThread.join();
-    if (obstacleThread.joinable()) obstacleThread.join();
+    
+    cleanerManager->cleanerMode(CleanerMode::OFF);
+    driveManager->stopMotor();
+}
+
+void Controller::resetController() {
+    std::cout << "[System] RESETTING CONTROLLER STATE..." << std::endl;
+    onOff = false;
+    {
+        std::lock_guard<std::mutex> lock(ctrlMutex);
+        isAvoiding = false;
+    }
+    if (dustThread.joinable()) dustThread.join();
     
     cleanerManager->cleanerMode(CleanerMode::OFF);
     driveManager->stopMotor();

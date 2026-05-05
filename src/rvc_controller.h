@@ -135,9 +135,10 @@ public:
     ~Controller();
 
     void interruptHandler(); // The Callback Function
-    void turnOn(); 
+    void turnOn();
     void turnOff();
-    void errorturnOff();
+    void resetController();
+    void errorturnOff();    
     void dustDetect();
     void avoidanceLoop();
 };
