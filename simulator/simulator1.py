@@ -1,5 +1,5 @@
 import pygame
-print("Simulator script starting...")
+print("Specialized Simulator (simulator1.py) starting...")
 import sys
 import socket
 import json
@@ -25,7 +25,7 @@ class RVCSimulator:
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((WINDOW_SIZE + 200, WINDOW_SIZE))
-        pygame.display.set_caption("RVC Stable Multi-Connection")
+        pygame.display.set_caption("RVC - 'ㅗ' Shape Test Map")
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont(None, 22)
         
@@ -43,20 +43,30 @@ class RVCSimulator:
     def reset_environment(self):
         with self.lock:
             self.dust_map = [[random.randint(0, MAX_VAL) if random.random() < 0.4 else 0 for _ in range(GRID_DIVISIONS)] for _ in range(GRID_DIVISIONS)]
-            self.pos_x, self.pos_y = 1.5, 1.5
-            self.angle = 0.0
+            self.walls = [[0 for _ in range(GRID_DIVISIONS)] for _ in range(GRID_DIVISIONS)]
+            
+            # "ㅗ" shaped pocket at center
+            self.walls[4][4] = 1 
+            self.walls[4][5] = 1 
+            self.walls[4][6] = 1 
+            self.walls[5][4] = 1 
+            self.walls[5][6] = 1 
+            
+            self.pos_x, self.pos_y = 5.5, 6.5
+            self.angle = -math.pi/2 
+            
             self.moving, self.turning, self.cleaning = False, 0, False
             self.cleaner_mode = "OFF"
             self.prev_front_blocked = False
+            
         self.broadcast_event({"type": "EVENT", "name": "RESET"})
-        print("Simulator: Environment Reset.")
+        print("Simulator: Environment Reset (ㅗ Shape Loaded).")
 
     def broadcast_event(self, event_data):
         msg = (json.dumps(event_data) + "\n").encode()
         clients_copy = []
         with self.lock:
             clients_copy = self.clients[:]
-        
         for conn in clients_copy:
             try:
                 conn.sendall(msg)
@@ -64,15 +74,27 @@ class RVCSimulator:
                 with self.lock:
                     if conn in self.clients: self.clients.remove(conn)
 
+    def is_wall(self, x, y):
+        gx, gy = int(x), int(y)
+        if 0 <= gx < GRID_DIVISIONS and 0 <= gy < GRID_DIVISIONS:
+            return self.walls[gy][gx] == 1
+        return True 
+
     def update_physics(self, dt):
         trigger_interrupt = False
         with self.lock:
             if self.turning != 0: self.angle += self.turning * ANGULAR_SPEED * dt
-            if self.moving:
-                nx = self.pos_x + math.cos(self.angle) * LINEAR_SPEED * dt
-                ny = self.pos_y + math.sin(self.angle) * LINEAR_SPEED * dt
-                if RVC_RADIUS <= nx <= MAP_SIZE - RVC_RADIUS: self.pos_x = nx
-                if RVC_RADIUS <= ny <= MAP_SIZE - RVC_RADIUS: self.pos_y = ny
+            if self.moving or getattr(self, 'moving_backward', False):
+                direction = 1 if self.moving else -1
+                nx = self.pos_x + math.cos(self.angle) * LINEAR_SPEED * dt * direction
+                ny = self.pos_y + math.sin(self.angle) * LINEAR_SPEED * dt * direction
+                can_move = True
+                for ox, oy in [(-RVC_RADIUS, -RVC_RADIUS), (RVC_RADIUS, -RVC_RADIUS), (-RVC_RADIUS, RVC_RADIUS), (RVC_RADIUS, RVC_RADIUS)]:
+                    if self.is_wall(nx + ox, ny + oy):
+                        can_move = False
+                        break
+                if can_move:
+                    self.pos_x, self.pos_y = nx, ny
             
             sensors = self.get_sensor_data_internal()
             is_blocked = (sensors['front'] <= INTERRUPT_THRESHOLD)
@@ -90,22 +112,31 @@ class RVCSimulator:
             self.broadcast_event({"type": "INTERRUPT", "source": "FRONT_SENSOR"})
 
     def get_sensor_data_internal(self):
-        def raycast_surface(ray_angle):
+        def raycast_all(ray_angle):
             dx, dy = math.cos(ray_angle), math.sin(ray_angle)
             dists = []
             if dx > 0: dists.append((MAP_SIZE - self.pos_x) / dx)
             elif dx < 0: dists.append((0 - self.pos_x) / dx)
             if dy > 0: dists.append((MAP_SIZE - self.pos_y) / dy)
             elif dy < 0: dists.append((0 - self.pos_y) / dy)
-            d_surface = max(0, min([d for d in dists if d >= 0]) - RVC_RADIUS)
-            return min(int(d_surface * 127), MAX_VAL)
+            d_boundary = min([d for d in dists if d >= 0]) if dists else MAP_SIZE
+            
+            d_wall = MAP_SIZE
+            step = 0.05
+            for d in [i * step for i in range(1, int(d_boundary/step))]:
+                if self.is_wall(self.pos_x + dx * d, self.pos_y + dy * d):
+                    d_wall = d
+                    break
+            
+            dist = min(d_boundary, d_wall)
+            return min(int(max(0, dist - RVC_RADIUS) * 127 / 2.0), MAX_VAL)
 
         gx, gy = int(self.pos_x), int(self.pos_y)
         dust_val = self.dust_map[gy][gx] if (0 <= gx < 10 and 0 <= gy < 10) else 0
         return {
-            "front": raycast_surface(self.angle),
-            "left": raycast_surface(self.angle - math.radians(45)),
-            "right": raycast_surface(self.angle + math.radians(45)),
+            "front": raycast_all(self.angle),
+            "left": raycast_all(self.angle - math.radians(90)),
+            "right": raycast_all(self.angle + math.radians(90)),
             "dust": int(dust_val),
             "pos": (round(self.pos_x, 2), round(self.pos_y, 2))
         }
@@ -128,8 +159,10 @@ class RVCSimulator:
                             conn.sendall((json.dumps(self.get_sensor_data_internal()) + "\n").encode())
                         elif req['type'] == 'SET_CONTROL':
                             with self.lock:
-                                self.moving = req.get('move', self.moving)
-                                self.turning = req.get('turn', self.turning)
+                                # Explicitly set movement flags to False if not provided or if they are False
+                                self.moving = req.get('move', False)
+                                self.moving_backward = req.get('backward', False)
+                                self.turning = req.get('turn', 0)
                                 self.cleaning = req.get('clean', self.cleaning)
                                 self.cleaner_mode = req.get('mode', self.cleaner_mode)
                             conn.sendall(b"{\"status\":\"ok\"}\n")
@@ -156,23 +189,31 @@ class RVCSimulator:
         for y in range(GRID_DIVISIONS):
             for x in range(GRID_DIVISIONS):
                 rect = pygame.Rect(x*60, y*60, 60, 60)
-                d = self.dust_map[y][x]
-                alpha = d / float(MAX_VAL)
-                color = (int(255*(1-alpha)+240*alpha), int(255*(1-alpha)+230*alpha), int(255*(1-alpha)+140*alpha))
-                pygame.draw.rect(self.screen, color, rect); pygame.draw.rect(self.screen, (220, 220, 220), rect, 1)
+                if self.walls[y][x] == 1:
+                    pygame.draw.rect(self.screen, (50, 50, 50), rect)
+                else:
+                    d = self.dust_map[y][x]
+                    alpha = d / float(MAX_VAL)
+                    color = (int(255*(1-alpha)+240*alpha), int(255*(1-alpha)+230*alpha), int(255*(1-alpha)+140*alpha))
+                    pygame.draw.rect(self.screen, color, rect)
+                pygame.draw.rect(self.screen, (220, 220, 220), rect, 1)
 
         sx, sy = int(self.pos_x*60), int(self.pos_y*60)
         rad = int(RVC_RADIUS*60)
         sensors = self.get_sensor_data_internal()
         pygame.draw.circle(self.screen, (255,255,0) if sensors['front'] <= 10 else (255,0,0), (sx, sy), rad)
         pygame.draw.line(self.screen, (0,255,0), (sx, sy), (sx + int(math.cos(self.angle)*rad*1.5), sy + int(math.sin(self.angle)*rad*1.5)), 3)
+        
         pygame.draw.rect(self.screen, (200,200,200), (600, 0, 200, 600))
         pygame.draw.rect(self.screen, (0,255,0), self.btn_on_rect); self.screen.blit(self.font.render("POWER ON", True, (255,255,255)), (660, 62))
         pygame.draw.rect(self.screen, (255,0,0), self.btn_off_rect); self.screen.blit(self.font.render("POWER OFF", True, (255,255,255)), (658, 112))
         pygame.draw.rect(self.screen, (255,165,0), self.btn_reset_rect); self.screen.blit(self.font.render("RESET MAP", True, (255,255,255)), (658, 162))
+        
         self.screen.blit(self.font.render(f"Cleaner: {self.cleaner_mode}", True, (0,0,0)), (620, 230))
         self.screen.blit(self.font.render(f"Front Sensor: {sensors['front']}", True, (0,0,0)), (620, 260))
-        self.screen.blit(self.font.render(f"Dust Sensor: {sensors['dust']}", True, (0,0,0)), (620, 290))
+        self.screen.blit(self.font.render(f"Left Sensor: {sensors['left']}", True, (0,0,0)), (620, 290))
+        self.screen.blit(self.font.render(f"Right Sensor: {sensors['right']}", True, (0,0,0)), (620, 320))
+        self.screen.blit(self.font.render(f"Dust Sensor: {sensors['dust']}", True, (0,0,0)), (620, 350))
         pygame.display.flip()
 
     def main_loop(self):

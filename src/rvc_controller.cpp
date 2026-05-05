@@ -72,7 +72,6 @@ void ObstacleSensorInterface::listen() {
         
         buffer += std::string(chunk, valread);
         
-        // Handle multiple JSON objects separated by \n or }{
         size_t pos;
         while ((pos = buffer.find('\n')) != std::string::npos) {
             std::string msg = buffer.substr(0, pos);
@@ -89,63 +88,141 @@ void ObstacleSensorInterface::listen() {
                 if (ctrl_ref) {
                     if (name == "BUTTON_ON") ctrl_ref->turnOn();
                     else if (name == "BUTTON_OFF") ctrl_ref->turnOff();
-                } else {
-                    std::cout << "[Warning] No Controller Reference!" << std::endl;
                 }
+            } else {
+                // Check for sensor values
+                std::string front_val = get_json_value(msg, "front");
+                std::string left_val = get_json_value(msg, "left");
+                std::string right_val = get_json_value(msg, "right");
+                std::string dust_val = get_json_value(msg, "dust");
+                
+                std::lock_guard<std::mutex> lock(sensorMutex);
+                if (!front_val.empty()) last_front = std::stoi(front_val);
+                if (!left_val.empty()) last_left = std::stoi(left_val);
+                if (!right_val.empty()) last_right = std::stoi(right_val);
+                if (!dust_val.empty()) last_dust = std::stoi(dust_val);
             }
         }
     }
 }
 
-// On-demand getters (can still poll if needed)
 bool ObstacleSensorInterface::isFrontBlocked() {
     SimulatorBridge::getInstance().send_cmd("{\"type\": \"GET_SENSORS\"}");
-    return false; // Result parsing would go here, keeping simple for Push focus
+    std::this_thread::sleep_for(std::chrono::milliseconds(50)); // Small wait for response
+    std::lock_guard<std::mutex> lock(sensorMutex);
+    return last_front <= threshold;
 }
 
-bool ObstacleSensorInterface::isLeftBlocked() { return false; }
-bool ObstacleSensorInterface::isRightBlocked() { return false; }
-ObstacleStatus ObstacleSensorInterface::isObstacleExist() { return {false, false, false}; }
+bool ObstacleSensorInterface::isLeftBlocked() {
+    std::lock_guard<std::mutex> lock(sensorMutex);
+    return last_left <= thresholdside;
+}
+
+bool ObstacleSensorInterface::isRightBlocked() {
+    std::lock_guard<std::mutex> lock(sensorMutex);
+    return last_right <= thresholdside;
+}
+
+ObstacleStatus ObstacleSensorInterface::isObstacleExist() {
+    std::lock_guard<std::mutex> lock(sensorMutex);
+    return {last_front <= threshold, last_left <= thresholdside, last_right <= thresholdside};
+}
+
+bool ObstacleSensorInterface::isDustExistence() {
+    SimulatorBridge::getInstance().send_cmd("{\"type\": \"GET_SENSORS\"}");
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    std::lock_guard<std::mutex> lock(sensorMutex);
+    return last_dust > 0;
+}
 
 // --- DustSensorInterface ---
 bool DustSensorInterface::isDustExistence() {
-    // Note: For now we return false or implement simple poll
-    return false; 
+    return false; // Will be handled via ObstacleSensorInterface in Controller
 }
 
 // --- PathPlanner ---
 PathPlanner::PathPlanner(ObstacleSensorInterface* o) : osi(o) {}
-Location PathPlanner::decisionPath() { return Location::LEFT; } // Simple logic
+Location PathPlanner::decisionPath() { 
+    if (osi->isLeftBlocked()){
+        if (osi->isRightBlocked()) return Location::REAR;
+        else return Location::RIGHT;
+    } else return Location::LEFT;
+
+    return Location::LEFT; 
+}
 
 // --- DriveManager ---
-DriveManager::DriveManager(PathPlanner* pp) : pathPlanner(pp), currentDriveState(Driving::STOP), turnTimer(1000) {}
+DriveManager::DriveManager(PathPlanner* pp) : pathPlanner(pp), currentDriveState(Driving::STOP), turnTimer(1020) {}
 void DriveManager::sendDriveCommand(Driving state) {
     currentDriveState = state;
-    std::string cmd = "{\"type\": \"SET_CONTROL\", \"move\": " + std::string(state == Driving::MOVEFORWARD ? "true" : "false") + 
-                      ", \"turn\": " + std::string(state == Driving::TURNLEFT ? "-1" : (state == Driving::TURNRIGHT ? "1" : "0")) + "}";
+
+    std::string is_forward = (state == Driving::MOVEFORWARD) ? "true" : "false";
+    std::string is_backward = (state == Driving::MOVEBACKWARD) ? "true" : "false";
+    std::string turn_str = "0";
+
+    if (state == Driving::TURNLEFT) turn_str = "-1";
+    else if (state == Driving::TURNRIGHT) turn_str = "1";
+
+    std::string cmd = "{\"type\": \"SET_CONTROL\", \"move\": " + is_forward + 
+                      ", \"backward\": " + is_backward +
+                      ", \"turn\": " + turn_str + "}";
+
     SimulatorBridge::getInstance().send_cmd(cmd);
 }
 Location DriveManager::avoidObstacle() {
     stopMotor();
-    rotateLeft();
-    turnTimer.setTimer(); // Blocking turn
-    stopMotor();
-    return Location::LEFT;
+    Location turn = pathPlanner->decisionPath();
+    if (turn == Location::LEFT) {
+        rotateLeft();
+        turnTimer.setTimer();
+        stopMotor();
+        rotateForward();
+        return turn;
+    }
+    else if (turn == Location::RIGHT) {
+        rotateRight();
+        turnTimer.setTimer();
+        stopMotor();
+        rotateForward();
+        return turn;
+    }
+    else {
+        rotateBackward();
+        return turn;
+    }
+    
 }
 void DriveManager::rotateForward() { sendDriveCommand(Driving::MOVEFORWARD); }
 void DriveManager::rotateLeft() { sendDriveCommand(Driving::TURNLEFT); }
 void DriveManager::rotateRight() { sendDriveCommand(Driving::TURNRIGHT); }
 void DriveManager::rotateBackward() { sendDriveCommand(Driving::MOVEBACKWARD); }
 void DriveManager::stopMotor() { sendDriveCommand(Driving::STOP); }
-
+void DriveManager::rotateLeftb() {
+    sendDriveCommand(Driving::TURNLEFT);
+    turnTimer.setTimer();
+    stopMotor();
+    rotateForward();
+ }
+void DriveManager::rotateRightb() { 
+    sendDriveCommand(Driving::TURNRIGHT);
+    turnTimer.setTimer();
+    stopMotor();
+    rotateForward(); 
+}
 // --- CleanerManager ---
 CleanerManager::CleanerManager() : currentMode(CleanerMode::OFF), boostTimer(3000) {}
 void CleanerManager::cleanerMode(CleanerMode mode) {
+    if (currentMode == mode) return;
     currentMode = mode;
     sendCleanerCommand(mode);
     if (mode == CleanerMode::UP) {
-        boostTimer.setTimer(); // Blocking boost
-        cleanerMode(CleanerMode::ON);
+        // Non-blocking boost: Start a thread to switch back to ON after delay
+        std::thread([this](){
+            std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+            if (this->currentMode == CleanerMode::UP) {
+                this->cleanerMode(CleanerMode::ON);
+            }
+        }).detach();
     }
 }
 void CleanerManager::sendCleanerCommand(CleanerMode mode) {
@@ -167,53 +244,79 @@ Controller::Controller(DriveManager* d, CleanerManager* c, DustSensorInterface* 
 Controller::~Controller() { 
     onOff = false; 
     if (dustThread.joinable()) dustThread.join(); 
+    if (obstacleThread.joinable()) obstacleThread.join();
 }
 
 void Controller::interruptHandler() {
-    if (!onOff) return;
-    
-    {
-        std::lock_guard<std::mutex> lock(ctrlMutex);
-        isAvoiding = true;
-    }
+    // Refactored to avoidanceLoop
+}
 
-    std::cout << "[System] INTERRUPT: Obstacle Avoidance Triggered!" << std::endl;
-    cleanerManager->cleanerMode(CleanerMode::OFF);
-    Location turnLocation = driveManager->avoidObstacle();
-    
-    if (turnLocation == Location::LEFT) {
-        if (obstacleSensorInterface->isRightBlocked()) {
-            errorturnOff();
-        }
-    } else if (turnLocation == Location::RIGHT) {
-        if (obstacleSensorInterface->isLeftBlocked()) {
-            errorturnOff();
-        }
-    }
-    
-    driveManager->rotateForward();
-    cleanerManager->cleanerMode(CleanerMode::ON);
+void Controller::avoidanceLoop() {
+    while(onOff) {
+        if (obstacleSensorInterface->isFrontBlocked()) {
+            {
+                std::lock_guard<std::mutex> lock(ctrlMutex);
+                isAvoiding = true;
+            }
 
-    {
-        std::lock_guard<std::mutex> lock(ctrlMutex);
-        isAvoiding = false;
+            std::cout << "[System] Obstacle Detected! Starting Avoidance..." << std::endl;
+            cleanerManager->cleanerMode(CleanerMode::OFF);
+            
+            Location turnLocation = driveManager->avoidObstacle();
+            
+            if (turnLocation == Location::LEFT) {
+                if (obstacleSensorInterface->isRightBlocked()) {
+                    errorturnOff();
+                } else {
+                    cleanerManager->cleanerMode(CleanerMode::ON);
+                }
+            } else if (turnLocation == Location::RIGHT) {
+                if (obstacleSensorInterface->isLeftBlocked()) {
+                    errorturnOff();
+                } else {
+                    cleanerManager->cleanerMode(CleanerMode::ON);
+                }
+            } else {
+                while(onOff) {
+                    obstacleSensorInterface->isFrontBlocked(); 
+                    if (!obstacleSensorInterface->isLeftBlocked()){
+                        driveManager->rotateLeftb();
+                        break;
+                    }
+                    else if (!obstacleSensorInterface->isRightBlocked()){
+                        driveManager->rotateRightb();
+                        break;
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                }
+                cleanerManager->cleanerMode(CleanerMode::ON);
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(ctrlMutex);
+                isAvoiding = false;
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }
 
 void Controller::dustDetect() {
     while(onOff) {
-        bool shouldCheck = false;
+        bool canCheck = false;
         {
             std::lock_guard<std::mutex> lock(ctrlMutex);
             if (!isAvoiding && cleanerManager->iscleanerOn()) {
-                shouldCheck = true;
+                canCheck = true;
             }
         }
 
-        if (shouldCheck && dustSensorInterface->isDustExistence()) {
-            std::lock_guard<std::mutex> lock(ctrlMutex);
-            if (!isAvoiding && onOff) {
-                cleanerManager->cleanerMode(CleanerMode::UP);
+        if (canCheck) {
+            if (obstacleSensorInterface->isDustExistence()) {
+                std::lock_guard<std::mutex> lock(ctrlMutex);
+                if (!isAvoiding && onOff) {
+                    cleanerManager->cleanerMode(CleanerMode::UP);
+                }
             }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -229,6 +332,9 @@ void Controller::turnOn() {
     
     if (dustThread.joinable()) dustThread.join();
     dustThread = std::thread(&Controller::dustDetect, this);
+
+    if (obstacleThread.joinable()) obstacleThread.join();
+    obstacleThread = std::thread(&Controller::avoidanceLoop, this);
 }
 
 void Controller::turnOff() {
@@ -237,13 +343,13 @@ void Controller::turnOff() {
     onOff = false;
     
     if (dustThread.joinable()) dustThread.join();
+    if (obstacleThread.joinable()) obstacleThread.join();
     
     cleanerManager->cleanerMode(CleanerMode::OFF);
     driveManager->stopMotor();
 }
 
 void Controller::errorturnOff() { turnOff(); }
-
 
 // --- ButtonInterface ---
 ButtonInterface::ButtonInterface(Controller* ctrl) : controller(ctrl) {}

@@ -45,7 +45,17 @@ private:
     std::thread listenerThread;
     std::atomic<bool> running;
     Controller* ctrl_ref = nullptr; // Reference to trigger other events
+    
+    std::mutex sensorMutex;
+    int last_front = 127;
+    int last_left = 127;
+    int last_right = 127;
+    int last_dust = 0;
+    const int threshold = 10;
+    const int thresholdside = 35;
+
     void listen();
+    void updateSensors();
 
 public:
     ObstacleSensorInterface();
@@ -60,6 +70,7 @@ public:
     bool isLeftBlocked();
     bool isRightBlocked();
     ObstacleStatus isObstacleExist();
+    bool isDustExistence();
 };
 
 class DustSensorInterface {
@@ -89,6 +100,8 @@ public:
     void rotateBackward();
     void stopMotor();
     void sendDriveCommand(Driving state);
+    void rotateLeftb();
+    void rotateRightb();
     Driving getCurrentState() const { return currentDriveState; }
 };
 
@@ -111,9 +124,10 @@ private:
     DustSensorInterface* dustSensorInterface;
     ObstacleSensorInterface* obstacleSensorInterface;
 
-    std::atomic<bool> onOff = false;
+    std::atomic<bool> onOff{false};
     bool isAvoiding = false;
     std::thread dustThread;
+    std::thread obstacleThread;
     std::mutex ctrlMutex;
 
 public:
@@ -125,6 +139,7 @@ public:
     void turnOff();
     void errorturnOff();
     void dustDetect();
+    void avoidanceLoop();
 };
 
 class ButtonInterface {
