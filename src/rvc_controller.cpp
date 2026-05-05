@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <cstring>
 #include <sstream>
+#include <sys/time.h>
+#include <csignal>
 
 // --- Helper Functions ---
 static std::string get_json_value(const std::string& json, const std::string& key) {
@@ -47,6 +49,35 @@ public:
 Timer::Timer(unsigned long ms) : duration(ms) {}
 void Timer::setTimer() {
     std::this_thread::sleep_for(std::chrono::milliseconds(duration));
+}
+
+void Timer::setAlarmTimer() {
+
+    struct itimerval timer_struct;
+
+    timer_struct.it_value.tv_sec = 1;            // 1초
+    timer_struct.it_value.tv_usec = 0;       // 20000 마이크로초 (= 20ms)
+
+    timer_struct.it_interval.tv_sec = 0;
+    timer_struct.it_interval.tv_usec = 0;
+
+    //타이머 설정
+    std::cout << "[System] Starting 1000ms timer" << std::endl;
+    if (setitimer(ITIMER_REAL, &timer_struct, nullptr) == -1) {
+        std::cerr << "Timer setup failed!" << std::endl;
+    }
+}
+
+void Timer::removeTimer() {
+    struct itimerval stop_timer;
+
+    stop_timer.it_value.tv_sec = 0;
+    stop_timer.it_value.tv_usec = 0;
+    stop_timer.it_interval.tv_sec = 0;
+    stop_timer.it_interval.tv_usec = 0;
+
+    setitimer(ITIMER_REAL, &stop_timer, nullptr);
+
 }
 
 // --- ObstacleSensorInterface ---
@@ -215,14 +246,11 @@ void CleanerManager::cleanerMode(CleanerMode mode) {
     if (currentMode == mode) return;
     currentMode = mode;
     sendCleanerCommand(mode);
+    if (mode == CleanerMode::OFF) {
+        boostTimer.removeTimer();
+    }
     if (mode == CleanerMode::UP) {
-        // Non-blocking boost: Start a thread to switch back to ON after delay
-        std::thread([this](){
-            std::this_thread::sleep_for(std::chrono::milliseconds(3000));
-            if (this->currentMode == CleanerMode::UP) {
-                this->cleanerMode(CleanerMode::ON);
-            }
-        }).detach();
+        boostTimer.setAlarmTimer();
     }
 }
 void CleanerManager::sendCleanerCommand(CleanerMode mode) {
@@ -232,6 +260,9 @@ void CleanerManager::sendCleanerCommand(CleanerMode mode) {
 }
 bool CleanerManager::iscleanerOn() {
     return currentMode != CleanerMode::OFF;
+}
+bool CleanerManager::isBoosterOn() {
+    return currentMode == CleanerMode::UP;
 }
 
 // --- Controller ---
@@ -258,21 +289,26 @@ void Controller::avoidanceLoop() {
                 std::lock_guard<std::mutex> lock(ctrlMutex);
                 isAvoiding = true;
             }
+            
 
             std::cout << "[System] Obstacle Detected! Starting Avoidance..." << std::endl;
+            this->isBoosterTimer.store(false);
             cleanerManager->cleanerMode(CleanerMode::OFF);
             
             Location turnLocation = driveManager->avoidObstacle();
             
             if (turnLocation == Location::LEFT) {
+                
                 if (obstacleSensorInterface->isRightBlocked()) {
                     errorturnOff();
+                    cleanerManager->cleanerMode(CleanerMode::ON);   //계속 이쪽코드에서 비정상적으로 종료됨, 일단 errorturnOff 무시
                 } else {
                     cleanerManager->cleanerMode(CleanerMode::ON);
                 }
             } else if (turnLocation == Location::RIGHT) {
                 if (obstacleSensorInterface->isLeftBlocked()) {
                     errorturnOff();
+                    cleanerManager->cleanerMode(CleanerMode::ON);
                 } else {
                     cleanerManager->cleanerMode(CleanerMode::ON);
                 }
@@ -280,10 +316,12 @@ void Controller::avoidanceLoop() {
                 while(onOff) {
                     obstacleSensorInterface->isFrontBlocked(); 
                     if (!obstacleSensorInterface->isLeftBlocked()){
+                        std::this_thread::sleep_for(std::chrono::milliseconds(700));
                         driveManager->rotateLeftb();
                         break;
                     }
                     else if (!obstacleSensorInterface->isRightBlocked()){
+                        std::this_thread::sleep_for(std::chrono::milliseconds(700));
                         driveManager->rotateRightb();
                         break;
                     }
@@ -301,24 +339,63 @@ void Controller::avoidanceLoop() {
     }
 }
 
+void Controller::boosterOverHandler() {
+    {
+    std::lock_guard<std::mutex> lock(ctrlMutex);
+    this->isBoosterTimer.store(false);
+    }
+}
+
 void Controller::dustDetect() {
     while(onOff) {
         bool canCheck = false;
         {
-            std::lock_guard<std::mutex> lock(ctrlMutex);
+            std::lock_guard<std::mutex> lock(timerMutex);
             if (!isAvoiding && cleanerManager->iscleanerOn()) {
                 canCheck = true;
             }
         }
 
+
         if (canCheck) {
+            if (!(this->isBoosterTimer.load()) && cleanerManager->isBoosterOn() ) {
+                cleanerManager->cleanerMode(CleanerMode::ON);  //타이머가 종료했는데, 부스터 모드일 경우
+                //this->isBoosterTimer.store(false);
+            }
+            std::lock_guard<std::mutex> lock(timerMutex);
             if (obstacleSensorInterface->isDustExistence()) {
-                std::lock_guard<std::mutex> lock(ctrlMutex);
+                
                 if (!isAvoiding && onOff) {
-                    cleanerManager->cleanerMode(CleanerMode::UP);
+                    this->isBoosterTimer.store(true);
+                    if(cleanerManager->isBoosterOn() == true) {
+                        cleanerManager->cleanerMode(CleanerMode::UP);
+                        //continue;    //대기 스래드를 또 만들지 않음
+                    } else {
+                    
+                        cleanerManager->cleanerMode(CleanerMode::UP);
+                        std::thread([this]() {
+                            int caught_signal;
+
+                            sigset_t wait_set;
+                            sigemptyset(&wait_set);
+                            sigaddset(&wait_set, SIGALRM);
+                            
+                            std::cout << "Waiting for SIGALRM" << std::endl;
+                            // 스레드가 여기서 대기
+                            sigwait(&wait_set, &caught_signal);
+
+                            // 시그널이 도착하면 아래 로직 실행
+                            if (caught_signal == SIGALRM) {
+                                std::cout << "[Wait-Thread] SIGALRM Caught! Routing to Controller..." << std::endl;
+                                this->boosterOverHandler();
+                            }
+                            
+                        }).detach();
+                    }
                 }
             }
         }
+        
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }
@@ -345,11 +422,14 @@ void Controller::turnOff() {
     if (dustThread.joinable()) dustThread.join();
     if (obstacleThread.joinable()) obstacleThread.join();
     
+
     cleanerManager->cleanerMode(CleanerMode::OFF);
     driveManager->stopMotor();
 }
 
-void Controller::errorturnOff() { turnOff(); }
+void Controller::errorturnOff() { 
+    //turnOff(); 
+}
 
 // --- ButtonInterface ---
 ButtonInterface::ButtonInterface(Controller* ctrl) : controller(ctrl) {}

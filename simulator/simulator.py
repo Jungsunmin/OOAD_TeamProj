@@ -104,8 +104,8 @@ class RVCSimulator:
         dust_val = self.dust_map[gy][gx] if (0 <= gx < 10 and 0 <= gy < 10) else 0
         return {
             "front": raycast_surface(self.angle),
-            "left": raycast_surface(self.angle - math.radians(45)),
-            "right": raycast_surface(self.angle + math.radians(45)),
+            "left": raycast_surface(self.angle - math.radians(90)),
+            "right": raycast_surface(self.angle + math.radians(90)),
             "dust": int(dust_val),
             "pos": (round(self.pos_x, 2), round(self.pos_y, 2))
         }
@@ -173,6 +173,8 @@ class RVCSimulator:
         self.screen.blit(self.font.render(f"Cleaner: {self.cleaner_mode}", True, (0,0,0)), (620, 230))
         self.screen.blit(self.font.render(f"Front Sensor: {sensors['front']}", True, (0,0,0)), (620, 260))
         self.screen.blit(self.font.render(f"Dust Sensor: {sensors['dust']}", True, (0,0,0)), (620, 290))
+        self.screen.blit(self.font.render(f"Left Sensor: {sensors['left']}", True, (0,0,0)), (620, 320))
+        self.screen.blit(self.font.render(f"Right Sensor: {sensors['right']}", True, (0,0,0)), (620, 350))
         pygame.display.flip()
 
     def main_loop(self):
@@ -180,9 +182,18 @@ class RVCSimulator:
             for ev in pygame.event.get():
                 if ev.type == pygame.QUIT: self.running = False
                 if ev.type == pygame.MOUSEBUTTONDOWN:
-                    if self.btn_on_rect.collidepoint(ev.pos): self.broadcast_event({"type": "EVENT", "name": "BUTTON_ON"})
+                    if self.btn_on_rect.collidepoint(ev.pos): 
+                        self.broadcast_event({"type": "EVENT", "name": "BUTTON_ON"})
+                        print("Power On Clicked")
                     if self.btn_off_rect.collidepoint(ev.pos): self.broadcast_event({"type": "EVENT", "name": "BUTTON_OFF"})
                     if self.btn_reset_rect.collidepoint(ev.pos): self.reset_environment()
+                    # main_loop 안의 if ev.type == pygame.MOUSEBUTTONDOWN: 아래에 추가
+                    if ev.pos[0] < WINDOW_SIZE: # 맵 영역을 클릭했을 때
+                        gx = ev.pos[0] // CELL_SIZE
+                        gy = ev.pos[1] // CELL_SIZE
+                        with self.lock:
+                            self.dust_map[gy][gx] = MAX_VAL
+                            print(f"Manual Dust at: {gx}, {gy}")
             self.update_physics(1.0/FPS); self.draw(); self.clock.tick(FPS)
         pygame.quit()
 

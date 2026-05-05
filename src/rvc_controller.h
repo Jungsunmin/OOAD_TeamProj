@@ -8,6 +8,8 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <sys/time.h>
+
 
 // --- Forward Declarations ---
 class ObstacleSensorInterface;
@@ -37,6 +39,8 @@ private:
 public:
     Timer(unsigned long ms = 0);
     void setTimer();
+    void setAlarmTimer();
+    void removeTimer();
 };
 
 class ObstacleSensorInterface {
@@ -51,8 +55,8 @@ private:
     int last_left = 127;
     int last_right = 127;
     int last_dust = 0;
-    const int threshold = 10;
-    const int thresholdside = 35;
+    const int threshold = 20;
+    const int thresholdside = 60;
 
     void listen();
     void updateSensors();
@@ -113,6 +117,7 @@ public:
     CleanerManager();
     void cleanerMode(CleanerMode mode);
     bool iscleanerOn();
+    bool isBoosterOn(); //
     void sendCleanerCommand(CleanerMode mode);
     CleanerMode getCurrentMode() const { return currentMode; }
 };
@@ -126,9 +131,12 @@ private:
 
     std::atomic<bool> onOff{false};
     bool isAvoiding = false;
+    std::atomic<bool> isBoosterTimer = false;
     std::thread dustThread;
     std::thread obstacleThread;
     std::mutex ctrlMutex;
+    std::mutex timerMutex;
+    void boosterOverHandler();
 
 public:
     Controller(DriveManager* d, CleanerManager* c, DustSensorInterface* ds, ObstacleSensorInterface* os);
