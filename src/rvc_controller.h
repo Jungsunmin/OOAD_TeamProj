@@ -5,6 +5,17 @@
 #include <vector>
 #include <functional>
 #include <chrono>
+#include <thread>
+#include <atomic>
+
+// --- Forward Declarations ---
+class ObstacleSensorInterface;
+class DustSensorInterface;
+class PathPlanner;
+class Timer;
+class DriveManager;
+class CleanerManager;
+class Controller;
 
 // --- Enums & Structs ---
 
@@ -35,17 +46,7 @@ struct ObstacleStatus {
     bool rightBlocked;
 };
 
-// --- Forward Declarations ---
-//class ObstacleSensorInterface;
-//class DustSensorInterface;
-//class PathPlanner;
-class Timer;
-class DriveManager;
-//class CleanerManager;
-class Controller;
-
-// --- Components ---
-
+// --- Class Diagram Specified Classes (Boundary Interfaces) ---
 
 class Timer {
 private:
@@ -105,31 +106,32 @@ private:
     PathPlanner* pathPlanner;
     Driving currentDriveState;
     Controller* controller;
-    Timer timer{ 3, false, [](){} };  //콜백 함수로 아무일도 안함
-    Location location = Location::FRONT;
+    Timer timer;
+    int client_fd; // To send movement commands to Simulator
 
 public:
-    DriveManager(PathPlanner* pathPlanner, Driving initialState, controller* controller);
-    Location avoidObstacle();
-    void resumeForward();
+    DriveManager(PathPlanner* pathPlanner, Driving initialState);
+    void avoidObstacle();
     void resumeLeft();
     void resumeRight();
-    void stop();
+    void setController(Controller* ctrl);
+    Driving getCurrentState() const;
     
+    // Command Bridge to Simulator
+    void sendDriveCommand(Driving state);
 };
 
-// class CleanerManager {
-// private:
-//     CleanerMode currentCleanerMode;
-//     Timer timer;
+class CleanerManager {
+private:
+    CleanerMode currentCleanerMode;
+    Timer timer;
+    int client_fd; // To send cleaner commands to Simulator
 
-// public:
-//     void cleanerMode(CleanerMode initialMode);
-    
-//     // Internal helper
-//     CleanerMode getCurrentMode() const;
-//     bool isBoostPeriodOver();
-// };/
+public:
+    CleanerManager();
+    void cleanerMode(CleanerMode initialMode);
+    void sendCleanerCommand(CleanerMode mode);
+};
 
 class Controller {
 private:
@@ -146,7 +148,7 @@ private:
     void resumeSideSensorCheck();
     void dustDetect();
 public:
-    Controller(DriveManager* drive, CleanerManager* cleaner, DustSensorInterface* dustSensorInterface);
+    Controller(DriveManager* drive, CleanerManager* cleaner, DustSensorInterface* dustSensor, ObstacleSensorInterface* obstacleSensor);
     void interruptHandler();
     
     void turnOn(); 

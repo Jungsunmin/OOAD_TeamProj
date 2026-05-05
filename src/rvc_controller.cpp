@@ -1,68 +1,20 @@
 #include "rvc_controller.h"
 
-// // --- Motor Implementation ---
-// void Motor::rotateForward() { std::cout << "Motor: Forward\n"; }
-// void Motor::rotateBackward() { std::cout << "Motor: Backward\n"; }
-// void Motor::rotateLeft() { std::cout << "Motor: Left\n"; }
-// void Motor::rotateRight() { std::cout << "Motor: Right\n"; }
-// void Motor::stopMotor() { std::cout << "Motor: Stop\n"; }
 
-// // --- Sensor Implementations ---
-// void FrontObstacleSensor::setBlocked(bool b) { blocked = b; }
-// bool FrontObstacleSensor::isBlocked() const { return blocked; }
-
-// void SideObstacleSensor::setStatus(bool l, bool r) { leftBlocked = l; rightBlocked = r; }
-// bool SideObstacleSensor::isLeftBlocked() const { return leftBlocked; }
-// bool SideObstacleSensor::isRightBlocked() const { return rightBlocked; }
-
-// void DustSensor::setDust(bool d) { dustDetected = d; }
-// bool DustSensor::isDustExist() const { return dustDetected; }
-
-// --- Timer Implementation ---
-Timer::Timer(unsigned long duration, bool isRunning = false, std::function<void()> timerCallback)
- : duration(duration), isRunning(isRunning), timerCallback(timerCallback) {}
-
-void Timer::setTimer() {
-    isRunning = true;
-    usleep(duration);
-    if(isRunning == false) return;   //timerOff()가 실행될 경우 실행됨
-    isRunning = false;
-    timerCallback();
-    return;
+bool ObstacleSensorInterface::isFrontBlocked() {
+    return frontSensor->getSensorValue() <= OBSTACLE_DISTANCE_THRESHOLD
 }
 
-void Timer::timerOff() {
-    isRunning = false;
-    return;
+bool ObstacleSensorInterface::isLeftBlocked() {
+    return leftSensor->getSensorValue() <= OBSTACLE_DISTANCE_THRESHOLD
+}
+bool ObstacleSensorInterface::isRigntBlocked() {
+    return rightSensor->getSensorValue() <= OBSTACLE_DISTANCE_THRESHOLD
 }
 
-// // --- ObstacleSensorInterface Implementation ---
-// ObstacleSensorInterface::ObstacleSensorInterface(FrontObstacleSensor* front, SideObstacleSensor* left, SideObstacleSensor* right)
-//     : frontSensor(front), leftSensor(left), rightSensor(right) {}
-
-// void ObstacleSensorInterface::hardwareISR() {
-//     if (onEmergencyCallback) onEmergencyCallback();
-// }
-
-// bool ObstacleSensorInterface::isFrontBlocked() {
-//     return frontSensor->isBlocked();
-// }
-
-// bool ObstacleSensorInterface::isLeftBlocked() {
-//     return leftSensor->isLeftBlocked();
-// }
-
-// bool ObstacleSensorInterface::isRigntBlocked() {
-//     return rightSensor->isRightBlocked();
-// }
-
-// ObstacleStatus ObstacleSensorInterface::isObstacleExist() {
-//     return {isFrontBlocked(), isLeftBlocked(), isRigntBlocked()};
-// }
-
-// void ObstacleSensorInterface::attachInterrupt(std::function<void()> callback) {
-//     onEmergencyCallback = callback;
-// }
+ObstacleStatus ObstacleSensorInterface::isObstacleExist() {
+    return {isFrontBlocked(), isLeftBlocked(), isRigntBlocked()};
+}
 
 // // --- DustSensorInterface Implementation ---
 // DustSensorInterface::DustSensorInterface(DustSensor* dustSensor) : dustSensor(dustSensor) {}
@@ -247,7 +199,3 @@ void Button::pushButtonOn() {
     if (controller) controller->turnOn();
 }
 
-void Button::pushButtonOff() {
-    std::cout << "Button: OFF\n";
-    if (controller) controller->turnOff();
-}
