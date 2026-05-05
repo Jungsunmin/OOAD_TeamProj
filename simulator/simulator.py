@@ -45,7 +45,7 @@ class RVCSimulator:
             self.dust_map = [[random.randint(0, MAX_VAL) if random.random() < 0.4 else 0 for _ in range(GRID_DIVISIONS)] for _ in range(GRID_DIVISIONS)]
             self.pos_x, self.pos_y = 1.5, 1.5
             self.angle = 0.0
-            self.moving, self.turning, self.cleaning = False, 0, False
+            self.moving, self.turning, self.cleaning = 0, 0, False
             self.cleaner_mode = "OFF"
             self.prev_front_blocked = False
         self.broadcast_event({"type": "EVENT", "name": "RESET"})
@@ -68,9 +68,9 @@ class RVCSimulator:
         trigger_interrupt = False
         with self.lock:
             if self.turning != 0: self.angle += self.turning * ANGULAR_SPEED * dt
-            if self.moving:
-                nx = self.pos_x + math.cos(self.angle) * LINEAR_SPEED * dt
-                ny = self.pos_y + math.sin(self.angle) * LINEAR_SPEED * dt
+            if self.moving != 0:
+                nx = self.pos_x + math.cos(self.angle) * LINEAR_SPEED * dt * self.moving
+                ny = self.pos_y + math.sin(self.angle) * LINEAR_SPEED * dt * self.moving
                 if RVC_RADIUS <= nx <= MAP_SIZE - RVC_RADIUS: self.pos_x = nx
                 if RVC_RADIUS <= ny <= MAP_SIZE - RVC_RADIUS: self.pos_y = ny
             
@@ -90,22 +90,29 @@ class RVCSimulator:
             self.broadcast_event({"type": "INTERRUPT", "source": "FRONT_SENSOR"})
 
     def get_sensor_data_internal(self):
-        def raycast_surface(ray_angle):
+        def raycast_surface(ray_angle, origin_x=None, origin_y=None):
+            if origin_x is None or origin_y is None:
+                origin_x, origin_y = self.pos_x, self.pos_y
             dx, dy = math.cos(ray_angle), math.sin(ray_angle)
             dists = []
-            if dx > 0: dists.append((MAP_SIZE - self.pos_x) / dx)
-            elif dx < 0: dists.append((0 - self.pos_x) / dx)
-            if dy > 0: dists.append((MAP_SIZE - self.pos_y) / dy)
-            elif dy < 0: dists.append((0 - self.pos_y) / dy)
+            if dx > 0: dists.append((MAP_SIZE - origin_x) / dx)
+            elif dx < 0: dists.append((0 - origin_x) / dx)
+            if dy > 0: dists.append((MAP_SIZE - origin_y) / dy)
+            elif dy < 0: dists.append((0 - origin_y) / dy)
             d_surface = max(0, min([d for d in dists if d >= 0]) - RVC_RADIUS)
             return min(int(d_surface * 127), MAX_VAL)
 
         gx, gy = int(self.pos_x), int(self.pos_y)
         dust_val = self.dust_map[gy][gx] if (0 <= gx < 10 and 0 <= gy < 10) else 0
+
+        side_sensor_forward_offset = 0.4
+        side_origin_x = self.pos_x + math.cos(self.angle) * side_sensor_forward_offset
+        side_origin_y = self.pos_y + math.sin(self.angle) * side_sensor_forward_offset
+
         return {
             "front": raycast_surface(self.angle),
-            "left": raycast_surface(self.angle - math.radians(45)),
-            "right": raycast_surface(self.angle + math.radians(45)),
+            "left": raycast_surface(self.angle - math.radians(90), side_origin_x, side_origin_y),
+            "right": raycast_surface(self.angle + math.radians(90), side_origin_x, side_origin_y),
             "dust": int(dust_val),
             "pos": (round(self.pos_x, 2), round(self.pos_y, 2))
         }
@@ -164,8 +171,22 @@ class RVCSimulator:
         sx, sy = int(self.pos_x*60), int(self.pos_y*60)
         rad = int(RVC_RADIUS*60)
         sensors = self.get_sensor_data_internal()
+
+        side_sensor_forward_offset = 0.5
+        side_sx = int((self.pos_x + math.cos(self.angle) * side_sensor_forward_offset) * 60)
+        side_sy = int((self.pos_y + math.sin(self.angle) * side_sensor_forward_offset) * 60)
+
+        # Change color only if FRONT sensor is blocked
         pygame.draw.circle(self.screen, (255,255,0) if sensors['front'] <= 10 else (255,0,0), (sx, sy), rad)
-        pygame.draw.line(self.screen, (0,255,0), (sx, sy), (sx + int(math.cos(self.angle)*rad*1.5), sy + int(math.sin(self.angle)*rad*1.5)), 3)
+        
+        # Draw Sensors (All consistent length 1.5 and width 3)
+        # Front
+        FRONT_SENSOR_DRAW_LENGTH = 1.5
+        pygame.draw.line(self.screen, (0,255,0), (sx, sy), (sx + int(math.cos(self.angle)*rad*FRONT_SENSOR_DRAW_LENGTH), sy + int(math.sin(self.angle)*rad*FRONT_SENSOR_DRAW_LENGTH)), 3)
+        # Left and right sensors start from the forward-shifted point to form a ㅜ-like shape.
+        pygame.draw.line(self.screen, (0,255,0), (side_sx, side_sy), (side_sx + int(math.cos(self.angle-math.radians(90))*rad*1.0), side_sy + int(math.sin(self.angle-math.radians(90))*rad*1.0)), 3)
+        pygame.draw.line(self.screen, (0,255,0), (side_sx, side_sy), (side_sx + int(math.cos(self.angle+math.radians(90))*rad*1.0), side_sy + int(math.sin(self.angle+math.radians(90))*rad*1.0)), 3)
+
         pygame.draw.rect(self.screen, (200,200,200), (600, 0, 200, 600))
         pygame.draw.rect(self.screen, (0,255,0), self.btn_on_rect); self.screen.blit(self.font.render("POWER ON", True, (255,255,255)), (660, 62))
         pygame.draw.rect(self.screen, (255,0,0), self.btn_off_rect); self.screen.blit(self.font.render("POWER OFF", True, (255,255,255)), (658, 112))
