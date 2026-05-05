@@ -5,6 +5,17 @@
 #include <vector>
 #include <functional>
 #include <chrono>
+#include <thread>
+#include <atomic>
+
+// --- Forward Declarations ---
+class ObstacleSensorInterface;
+class DustSensorInterface;
+class PathPlanner;
+class Timer;
+class DriveManager;
+class CleanerManager;
+class Controller;
 
 // --- Enums & Structs ---
 
@@ -35,54 +46,7 @@ struct ObstacleStatus {
     bool rightBlocked;
 };
 
-// --- Forward Declarations ---
-class Motor;
-class FrontObstacleSensor;
-class SideObstacleSensor;
-class DustSensor;
-class ObstacleSensorInterface;
-class DustSensorInterface;
-class PathPlanner;
-class Timer;
-class DriveManager;
-class CleanerManager;
-class Controller;
-
-// --- Components ---
-
-class Motor {
-public:
-    void rotateForward();
-    void rotateBackward();
-    void rotateLeft();
-    void rotateRight();
-    void stopMotor();
-};
-
-class FrontObstacleSensor {
-    bool blocked = false;
-public:
-    void setBlocked(bool b);
-    bool isBlocked() const;
-};
-
-class SideObstacleSensor {
-    bool leftBlocked = false;
-    bool rightBlocked = false;
-public:
-    void setStatus(bool l, bool r);
-    bool isLeftBlocked() const;
-    bool isRightBlocked() const;
-};
-
-class DustSensor {
-    bool dustDetected = false;
-public:
-    void setDust(bool d);
-    bool isDustExist() const;
-};
-
-// --- Class Diagram Specified Classes ---
+// --- Class Diagram Specified Classes (Boundary Interfaces) ---
 
 class Timer {
 private:
@@ -94,84 +58,84 @@ public:
     Timer(bool isRunning = false);
     void setTimer();
     void clearTimer();
-    
-    // Internal helpers
     bool checkTimer();
     void setDuration(unsigned long ms);
 };
 
+// This is the "Window" to the external Simulator
 class ObstacleSensorInterface {
 private:
-    FrontObstacleSensor* frontSensor;
-    SideObstacleSensor* leftSensor;
-    SideObstacleSensor* rightSensor;
-    const int OBSTACLE_DISTANCE_THRESHOLD = 10;
-    std::function<void()> onEmergencyCallback;
+    int client_fd;
+    const int OBSTACLE_DISTANCE_THRESHOLD = 10; // Value <= 10 is BLOCKED
+    std::function<void()> onEmergencyCallback = nullptr;
+    std::thread listenerThread;
+    std::atomic<bool> running;
+
+    void listenToSimulator();
 
 public:
-    ObstacleSensorInterface(FrontObstacleSensor* front, SideObstacleSensor* left, SideObstacleSensor* right);
-    void hardwareISR();
+    ObstacleSensorInterface();
+    ~ObstacleSensorInterface();
+    
+    // Boundary methods that talk to Simulator
     bool isFrontBlocked();
     bool isLeftBlocked();
-    bool isRigntBlocked(); 
+    bool isRightBlocked(); 
     ObstacleStatus isObstacleExist();
+    
+    // The "Interrupt" registration
     void attachInterrupt(std::function<void()> callback);
 };
 
 class DustSensorInterface {
 private:
-    DustSensor* dustSensor;
-    const int DUST_EXISTENCE_THRESHOLD = 5;
+    int client_fd;
+    const int DUST_EXISTENCE_THRESHOLD = 60; // Value >= 60 is DUSTY
 
 public:
-    DustSensorInterface(DustSensor* dustSensor);
+    DustSensorInterface();
     bool isDustExistence();
 };
 
 class PathPlanner {
 private:
     ObstacleSensorInterface* obstacleSensorInterface;
-    ObstacleStatus currentObstacleStatus;
 
 public:
-    PathPlanner(ObstacleSensorInterface* obstacleSensorInterface);
-    void decisionPath();
-    
-    // Internal helper to get result
-    Driving getSelectedDriving();
+    PathPlanner(ObstacleSensorInterface* osi);
+    Location decisionPath();
 };
 
 class DriveManager {
 private:
-    Motor* leftMotor;
-    Motor* rightMotor;
     PathPlanner* pathPlanner;
     Driving currentDriveState;
     Controller* controller;
     Timer timer;
+    int client_fd; // To send movement commands to Simulator
 
 public:
-    DriveManager(Motor* left, Motor* right, PathPlanner* pathPlanner, Driving initialState);
+    DriveManager(PathPlanner* pathPlanner, Driving initialState);
     void avoidObstacle();
     void resumeLeft();
     void resumeRight();
-    
-    // Internal helpers
     void setController(Controller* ctrl);
     Driving getCurrentState() const;
+    
+    // Command Bridge to Simulator
+    void sendDriveCommand(Driving state);
 };
 
 class CleanerManager {
 private:
     CleanerMode currentCleanerMode;
     Timer timer;
+    int client_fd; // To send cleaner commands to Simulator
 
 public:
+    CleanerManager();
     void cleanerMode(CleanerMode initialMode);
-    
-    // Internal helper
-    CleanerMode getCurrentMode() const;
-    bool isBoostPeriodOver();
+    void sendCleanerCommand(CleanerMode mode);
 };
 
 class Controller {
@@ -182,7 +146,7 @@ private:
     ObstacleSensorInterface* obstacleSensorInterface;
 
 public:
-    Controller(DriveManager* drive, CleanerManager* cleaner, DustSensorInterface* dustSensorInterface);
+    Controller(DriveManager* drive, CleanerManager* cleaner, DustSensorInterface* dustSensor, ObstacleSensorInterface* obstacleSensor);
     void interruptHandler();
     void errorturnOff();
     void turnOn(); 
@@ -190,24 +154,4 @@ public:
     void turnRightOver();
     void turnLeftOver();
     void resumeSideSensorCheck();
-    
-    // Internal helper
-    void setObstacleSensorInterface(ObstacleSensorInterface* osi);
-};
-
-class ButtonInterface {
-public:
-    virtual ~ButtonInterface() = default;
-    virtual void pushButtonOn() = 0;
-    virtual void pushButtonOff() = 0;
-};
-
-// Concrete implementation of Button
-class Button : public ButtonInterface {
-private:
-    Controller* controller;
-public:
-    Button(Controller* ctrl);
-    void pushButtonOn() override;
-    void pushButtonOff() override;
 };
