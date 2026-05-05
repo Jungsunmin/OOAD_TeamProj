@@ -106,11 +106,10 @@ private:
     SideObstacleSensor* leftSensor;
     SideObstacleSensor* rightSensor;
     const int OBSTACLE_DISTANCE_THRESHOLD = 10;
-    std::function<void()> onEmergencyCallback;
+    std::function<void()> onEmergencyCallback = nullptr;
 
 public:
     ObstacleSensorInterface(FrontObstacleSensor* front, SideObstacleSensor* left, SideObstacleSensor* right);
-    void hardwareISR();
     bool isFrontBlocked();
     bool isLeftBlocked();
     bool isRigntBlocked(); 
@@ -121,7 +120,7 @@ public:
 class DustSensorInterface {
 private:
     DustSensor* dustSensor;
-    const int DUST_EXISTENCE_THRESHOLD = 5;
+    const int DUST_EXISTENCE_THRESHOLD = 60;
 
 public:
     DustSensorInterface(DustSensor* dustSensor);
@@ -135,10 +134,7 @@ private:
 
 public:
     PathPlanner(ObstacleSensorInterface* obstacleSensorInterface);
-    void decisionPath();
-    
-    // Internal helper to get result
-    Driving getSelectedDriving();
+    Location decisionPath();
 };
 
 class DriveManager {
@@ -165,13 +161,10 @@ class CleanerManager {
 private:
     CleanerMode currentCleanerMode;
     Timer timer;
+    Cleaner cleaner;
 
 public:
     void cleanerMode(CleanerMode initialMode);
-    
-    // Internal helper
-    CleanerMode getCurrentMode() const;
-    bool isBoostPeriodOver();
 };
 
 class Controller {
@@ -195,19 +188,4 @@ public:
     void setObstacleSensorInterface(ObstacleSensorInterface* osi);
 };
 
-class ButtonInterface {
-public:
-    virtual ~ButtonInterface() = default;
-    virtual void pushButtonOn() = 0;
-    virtual void pushButtonOff() = 0;
-};
 
-// Concrete implementation of Button
-class Button : public ButtonInterface {
-private:
-    Controller* controller;
-public:
-    Button(Controller* ctrl);
-    void pushButtonOn() override;
-    void pushButtonOff() override;
-};
