@@ -52,59 +52,54 @@ class Timer {
 private:
     unsigned long duration;
     bool isRunning;
-    std::chrono::steady_clock::time_point startTime;
+    std::function<void()> timerCallback;
 
 public:
-    Timer(bool isRunning = false);
+    Timer(unsigned long duration, bool isRunning = false, std::function<void()> timerCallback);
     void setTimer();
-    void clearTimer();
-    bool checkTimer();
-    void setDuration(unsigned long ms);
+    void timerOff();
 };
 
-// This is the "Window" to the external Simulator
-class ObstacleSensorInterface {
-private:
-    int client_fd;
-    const int OBSTACLE_DISTANCE_THRESHOLD = 10; // Value <= 10 is BLOCKED
-    std::function<void()> onEmergencyCallback = nullptr;
-    std::thread listenerThread;
-    std::atomic<bool> running;
+// class ObstacleSensorInterface {
+// private:
+//     FrontObstacleSensor* frontSensor;
+//     SideObstacleSensor* leftSensor;
+//     SideObstacleSensor* rightSensor;
+//     const int OBSTACLE_DISTANCE_THRESHOLD = 10;
+//     std::function<void()> onEmergencyCallback;
 
-    void listenToSimulator();
+// public:
+//     ObstacleSensorInterface(FrontObstacleSensor* front, SideObstacleSensor* left, SideObstacleSensor* right);
+//     void hardwareISR();
+//     bool isFrontBlocked();
+//     bool isLeftBlocked();
+//     bool isRigntBlocked(); 
+//     ObstacleStatus isObstacleExist();
+//     void attachInterrupt(std::function<void()> callback);
+// };
 
-public:
-    ObstacleSensorInterface();
-    ~ObstacleSensorInterface();
+// class DustSensorInterface {
+// private:
+//     DustSensor* dustSensor;
+//     const int DUST_EXISTENCE_THRESHOLD = 5;
+
+// public:
+//     DustSensorInterface(DustSensor* dustSensor);
+//     bool isDustExistence();
+// };
+
+// class PathPlanner {
+// private:
+//     ObstacleSensorInterface* obstacleSensorInterface;
+//     ObstacleStatus currentObstacleStatus;
+
+// public:
+//     PathPlanner(ObstacleSensorInterface* obstacleSensorInterface);
+//     void decisionPath();
     
-    // Boundary methods that talk to Simulator
-    bool isFrontBlocked();
-    bool isLeftBlocked();
-    bool isRightBlocked(); 
-    ObstacleStatus isObstacleExist();
-    
-    // The "Interrupt" registration
-    void attachInterrupt(std::function<void()> callback);
-};
-
-class DustSensorInterface {
-private:
-    int client_fd;
-    const int DUST_EXISTENCE_THRESHOLD = 60; // Value >= 60 is DUSTY
-
-public:
-    DustSensorInterface();
-    bool isDustExistence();
-};
-
-class PathPlanner {
-private:
-    ObstacleSensorInterface* obstacleSensorInterface;
-
-public:
-    PathPlanner(ObstacleSensorInterface* osi);
-    Location decisionPath();
-};
+//     // Internal helper to get result
+//     Driving getSelectedDriving();
+// };
 
 class DriveManager {
 private:
@@ -145,13 +140,35 @@ private:
     DustSensorInterface* dustSensorInterface;
     ObstacleSensorInterface* obstacleSensorInterface;
 
+    bool onOff = false;
+    bool clearValue = false;
+
+    void errorturnOff();
+    void clearDustValue();
+    void resumeSideSensorCheck();
+    void dustDetect();
 public:
     Controller(DriveManager* drive, CleanerManager* cleaner, DustSensorInterface* dustSensor, ObstacleSensorInterface* obstacleSensor);
     void interruptHandler();
-    void errorturnOff();
+    
     void turnOn(); 
     void turnOff();
-    void turnRightOver();
-    void turnLeftOver();
-    void resumeSideSensorCheck();
+    
+};
+
+class ButtonInterface {
+public:
+    virtual ~ButtonInterface() = default;
+    virtual void pushButtonOn() = 0;
+    virtual void pushButtonOff() = 0;
+};
+
+// Concrete implementation of Button
+class Button : public ButtonInterface {
+private:
+    Controller* controller;
+public:
+    Button(Controller* ctrl);
+    void pushButtonOn() override;
+    void pushButtonOff() override;
 };
