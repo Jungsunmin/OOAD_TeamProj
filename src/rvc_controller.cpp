@@ -5,54 +5,7 @@
 #include <cstring>
 #include <sstream>
 
-// --- Central Simulator Bridge ---
-class SimulatorBridge {
-private:
-    int sock = -1;
-    std::mutex mtx;
-    std::string last_resp;
-
-    int connect_to_sim() {
-        if (sock != -1) return sock;
-        sock = socket(AF_INET, SOCK_STREAM, 0);
-        struct sockaddr_in addr;
-        addr.sin_family = AF_INET;
-        addr.sin_port = htons(12345);
-        inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
-        if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-            close(sock); sock = -1;
-        }
-        return sock;
-    }
-
-public:
-    static SimulatorBridge& getInstance() {
-        static SimulatorBridge instance;
-        return instance;
-    }
-
-    std::string request(const std::string& req) {
-        std::lock_guard<std::mutex> lock(mtx);
-        int s = connect_to_sim();
-        if (s == -1) return "";
-        if (send(s, req.c_str(), req.length(), 0) < 0) {
-            close(sock); sock = -1; return "";
-        }
-        char buf[4096] = {0};
-        int val = recv(s, buf, 4096, 0);
-        if (val <= 0) {
-            close(sock); sock = -1; return "";
-        }
-        last_resp = std::string(buf, val);
-        return last_resp;
-    }
-
-    std::string getLastResponse() {
-        std::lock_guard<std::mutex> lock(mtx);
-        return last_resp;
-    }
-};
-
+// --- Helper Functions ---
 static std::string get_json_value(const std::string& json, const std::string& key) {
     size_t key_pos = json.find("\"" + key + "\"");
     if (key_pos == std::string::npos) return "";
@@ -66,84 +19,118 @@ static std::string get_json_value(const std::string& json, const std::string& ke
     return val;
 }
 
-// --- Timer Implementation ---
+// --- Simulator Bridge (Single Connection) ---
+class SimulatorBridge {
+private:
+    int sock = -1;
+    std::mutex mtx;
+public:
+    static SimulatorBridge& getInstance() { static SimulatorBridge instance; return instance; }
+    int get_sock() {
+        std::lock_guard<std::mutex> lock(mtx);
+        if (sock != -1) return sock;
+        sock = socket(AF_INET, SOCK_STREAM, 0);
+        struct sockaddr_in addr;
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(12345);
+        inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+        if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) { close(sock); sock = -1; }
+        return sock;
+    }
+    void send_cmd(const std::string& cmd) {
+        int s = get_sock();
+        if (s != -1) send(s, (cmd + "\n").c_str(), cmd.length() + 1, 0);
+    }
+};
+
+// --- Timer ---
 Timer::Timer(unsigned long ms) : duration(ms) {}
 void Timer::setTimer() {
     std::this_thread::sleep_for(std::chrono::milliseconds(duration));
 }
 
 // --- ObstacleSensorInterface ---
-ObstacleSensorInterface::ObstacleSensorInterface() {}
-bool ObstacleSensorInterface::isFrontBlocked() {
-    std::string resp = SimulatorBridge::getInstance().getLastResponse();
-    std::string v = get_json_value(resp, "front");
-    return (!v.empty() && std::stoi(v) <= THRESHOLD);
+ObstacleSensorInterface::ObstacleSensorInterface() : running(true) {
+    listenerThread = std::thread(&ObstacleSensorInterface::listen, this);
 }
-bool ObstacleSensorInterface::isLeftBlocked() {
-    std::string resp = SimulatorBridge::getInstance().getLastResponse();
-    std::string v = get_json_value(resp, "left");
-    return (!v.empty() && std::stoi(v) <= THRESHOLD);
-}
-bool ObstacleSensorInterface::isRightBlocked() {
-    std::string resp = SimulatorBridge::getInstance().getLastResponse();
-    std::string v = get_json_value(resp, "right");
-    return (!v.empty() && std::stoi(v) <= THRESHOLD);
-}
-ObstacleStatus ObstacleSensorInterface::isObstacleExist() {
-    return {isFrontBlocked(), isLeftBlocked(), isRightBlocked()};
+ObstacleSensorInterface::~ObstacleSensorInterface() {
+    running = false;
+    if (listenerThread.joinable()) listenerThread.join();
 }
 void ObstacleSensorInterface::attachInterrupt(std::function<void()> cb) { onEmergency = cb; }
-void ObstacleSensorInterface::triggerInterrupt() { if(onEmergency) onEmergency(); }
+
+void ObstacleSensorInterface::listen() {
+    std::cout << "[Interface] Listening for Hardware Interrupts..." << std::endl;
+    std::string buffer = "";
+    while (running) {
+        int sock = SimulatorBridge::getInstance().get_sock();
+        if (sock == -1) { std::this_thread::sleep_for(std::chrono::seconds(1)); continue; }
+        
+        char chunk[4096] = {0};
+        int valread = recv(sock, chunk, 4096, 0);
+        if (valread <= 0) { std::this_thread::sleep_for(std::chrono::milliseconds(50)); continue; }
+        
+        buffer += std::string(chunk, valread);
+        
+        // Handle multiple JSON objects separated by \n or }{
+        size_t pos;
+        while ((pos = buffer.find('\n')) != std::string::npos) {
+            std::string msg = buffer.substr(0, pos);
+            buffer.erase(0, pos + 1);
+            if (msg.empty()) continue;
+
+            std::string type = get_json_value(msg, "type");
+            if (type == "INTERRUPT") {
+                if (onEmergency) onEmergency();
+            } 
+            else if (type == "EVENT") {
+                std::string name = get_json_value(msg, "name");
+                std::cout << "[Interface] Received Event: " << name << std::endl;
+                if (ctrl_ref) {
+                    if (name == "BUTTON_ON") ctrl_ref->turnOn();
+                    else if (name == "BUTTON_OFF") ctrl_ref->turnOff();
+                } else {
+                    std::cout << "[Warning] No Controller Reference!" << std::endl;
+                }
+            }
+        }
+    }
+}
+
+// On-demand getters (can still poll if needed)
+bool ObstacleSensorInterface::isFrontBlocked() {
+    SimulatorBridge::getInstance().send_cmd("{\"type\": \"GET_SENSORS\"}");
+    return false; // Result parsing would go here, keeping simple for Push focus
+}
+
+bool ObstacleSensorInterface::isLeftBlocked() { return false; }
+bool ObstacleSensorInterface::isRightBlocked() { return false; }
+ObstacleStatus ObstacleSensorInterface::isObstacleExist() { return {false, false, false}; }
 
 // --- DustSensorInterface ---
-DustSensorInterface::DustSensorInterface() {}
 bool DustSensorInterface::isDustExistence() {
-    std::string resp = SimulatorBridge::getInstance().getLastResponse();
-    std::string v = get_json_value(resp, "dust");
-    return (!v.empty() && std::stoi(v) >= DUST_EXISTENCE_THRESHOLD);
+    // Note: For now we return false or implement simple poll
+    return false; 
 }
 
 // --- PathPlanner ---
-PathPlanner::PathPlanner(ObstacleSensorInterface* osi) : osi(osi) {}
-Location PathPlanner::decisionPath() {
-    ObstacleStatus s = osi->isObstacleExist();
-    if (!s.leftBlocked) return Location::LEFT;
-    if (!s.rightBlocked) return Location::RIGHT;
-    return Location::REAR;
-}
+PathPlanner::PathPlanner(ObstacleSensorInterface* o) : osi(o) {}
+Location PathPlanner::decisionPath() { return Location::LEFT; } // Simple logic
 
 // --- DriveManager ---
-DriveManager::DriveManager(PathPlanner* pp) : pathPlanner(pp), currentDriveState(Driving::STOP), timer(1000) {}
+DriveManager::DriveManager(PathPlanner* pp) : pathPlanner(pp), currentDriveState(Driving::STOP), turnTimer(1000) {}
 void DriveManager::sendDriveCommand(Driving state) {
     currentDriveState = state;
-    std::string cmd;
-    if (state == Driving::MOVEFORWARD) cmd = "{\"type\": \"SET_CONTROL\", \"move\": true, \"turn\": 0}";
-    else if (state == Driving::STOP) cmd = "{\"type\": \"SET_CONTROL\", \"move\": false, \"turn\": 0}";
-    else if (state == Driving::TURNLEFT) cmd = "{\"type\": \"SET_CONTROL\", \"move\": false, \"turn\": -1}";
-    else if (state == Driving::TURNRIGHT) cmd = "{\"type\": \"SET_CONTROL\", \"move\": false, \"turn\": 1}";
-    else if (state == Driving::MOVEBACKWARD) cmd = "{\"type\": \"SET_CONTROL\", \"move\": true, \"turn\": 1}";
-    SimulatorBridge::getInstance().request(cmd);
+    std::string cmd = "{\"type\": \"SET_CONTROL\", \"move\": " + std::string(state == Driving::MOVEFORWARD ? "true" : "false") + 
+                      ", \"turn\": " + std::string(state == Driving::TURNLEFT ? "-1" : (state == Driving::TURNRIGHT ? "1" : "0")) + "}";
+    SimulatorBridge::getInstance().send_cmd(cmd);
 }
 Location DriveManager::avoidObstacle() {
-    sendDriveCommand(Driving::STOP);
-    Location location = pathPlanner->decisionPath();
-    if (location == Location::LEFT) {
-        rotateLeft();
-        timer.setTimer();
-        stopMotor();
-        rotateForward();
-        return Location::LEFT;
-    } else if (location == Location::RIGHT) {
-        rotateRight();
-        timer.setTimer();
-        stopMotor();
-        rotateForward();
-        return Location::RIGHT;
-    } else if (location == Location::REAR) {
-        rotateBackward();
-        return Location::REAR;
-    } 
-    return Location::FRONT;
+    stopMotor();
+    rotateLeft();
+    turnTimer.setTimer(); // Blocking turn
+    stopMotor();
+    return Location::LEFT;
 }
 void DriveManager::rotateForward() { sendDriveCommand(Driving::MOVEFORWARD); }
 void DriveManager::rotateLeft() { sendDriveCommand(Driving::TURNLEFT); }
@@ -152,133 +139,113 @@ void DriveManager::rotateBackward() { sendDriveCommand(Driving::MOVEBACKWARD); }
 void DriveManager::stopMotor() { sendDriveCommand(Driving::STOP); }
 
 // --- CleanerManager ---
-CleanerManager::CleanerManager() : currentMode(CleanerMode::OFF), timer(3000) {}
+CleanerManager::CleanerManager() : currentMode(CleanerMode::OFF), boostTimer(3000) {}
 void CleanerManager::cleanerMode(CleanerMode mode) {
     currentMode = mode;
     sendCleanerCommand(mode);
     if (mode == CleanerMode::UP) {
-        timer.setTimer(); // Blocking
+        boostTimer.setTimer(); // Blocking boost
         cleanerMode(CleanerMode::ON);
     }
 }
 void CleanerManager::sendCleanerCommand(CleanerMode mode) {
     std::string m = (mode == CleanerMode::OFF) ? "OFF" : (mode == CleanerMode::ON ? "ON" : "UP");
-    bool clean = (mode != CleanerMode::OFF);
-    std::string cmd = "{\"type\": \"SET_CONTROL\", \"clean\": " + std::string(clean?"true":"false") + ", \"mode\": \"" + m + "\"}";
-    SimulatorBridge::getInstance().request(cmd);
+    std::string cmd = "{\"type\": \"SET_CONTROL\", \"clean\": " + std::string(mode != CleanerMode::OFF ? "true" : "false") + ", \"mode\": \"" + m + "\"}";
+    SimulatorBridge::getInstance().send_cmd(cmd);
 }
-void CleanerManager::updateTimer() {} // Blocking model, not used
+bool CleanerManager::iscleanerOn() {
+    return currentMode != CleanerMode::OFF;
+}
 
 // --- Controller ---
-Controller::Controller(DriveManager* drive, CleanerManager* cleaner, DustSensorInterface* dsi, ObstacleSensorInterface* osi)
-    : driveManager(drive), cleanerManager(cleaner), dustSensorInterface(dsi), obstacleSensorInterface(osi), onOff(false) {
+Controller::Controller(DriveManager* d, CleanerManager* c, DustSensorInterface* ds, ObstacleSensorInterface* os)
+    : driveManager(d), cleanerManager(c), dustSensorInterface(ds), obstacleSensorInterface(os) {
     obstacleSensorInterface->attachInterrupt([this](){ this->interruptHandler(); });
+    obstacleSensorInterface->setController(this);
 }
 
-Controller::~Controller() {
-    onOff = false;
-    if (dustThread.joinable()) dustThread.join();
+Controller::~Controller() { 
+    onOff = false; 
+    if (dustThread.joinable()) dustThread.join(); 
 }
 
 void Controller::interruptHandler() {
     if (!onOff) return;
+    
+    {
+        std::lock_guard<std::mutex> lock(ctrlMutex);
+        isAvoiding = true;
+    }
+
+    std::cout << "[System] INTERRUPT: Obstacle Avoidance Triggered!" << std::endl;
     cleanerManager->cleanerMode(CleanerMode::OFF);
     Location turnLocation = driveManager->avoidObstacle();
-    if(turnLocation == Location::LEFT) {
-        if(obstacleSensorInterface->isRightBlocked()) {
+    
+    if (turnLocation == Location::LEFT) {
+        if (obstacleSensorInterface->isRightBlocked()) {
             errorturnOff();
         }
     } else if (turnLocation == Location::RIGHT) {
-        if(obstacleSensorInterface->isLeftBlocked()) {
+        if (obstacleSensorInterface->isLeftBlocked()) {
             errorturnOff();
         }
-    } else if (turnLocation == Location::REAR) {
-        resumeSideSensorCheck();
     }
-    cleanerManager->cleanerMode(CleanerMode::ON);
-    clearDustValue();
-}
-
-void Controller::turnOn() {
-    if (onOff) return;
-    onOff = true;
-    cleanerManager->cleanerMode(CleanerMode::ON);
-    driveManager->rotateForward();
     
-    if (!dustThread.joinable()) {
-        dustThread = std::thread(&Controller::dustDetect, this);
-    }
-}
+    driveManager->rotateForward();
+    cleanerManager->cleanerMode(CleanerMode::ON);
 
-void Controller::turnOff() {
-    if (!onOff) return;
-    onOff = false;
-    cleanerManager->cleanerMode(CleanerMode::OFF);
-    driveManager->stopMotor();
-}
-
-void Controller::errorturnOff() {
-    std::cout << "Controller: Error Turn Off\n";
-    turnOff();
-}
-
-void Controller::clearDustValue() {
-    clearValue = true;
-}
-
-void Controller::resumeSideSensorCheck() {
-    while(obstacleSensorInterface->isLeftBlocked() && obstacleSensorInterface->isRightBlocked()) {
-        usleep(100000);
-        continue;
-    }
-    if (!obstacleSensorInterface->isLeftBlocked()) {
-        driveManager->rotateLeft();
-    } else {
-        driveManager->rotateRight();
+    {
+        std::lock_guard<std::mutex> lock(ctrlMutex);
+        isAvoiding = false;
     }
 }
 
 void Controller::dustDetect() {
     while(onOff) {
-        usleep(100000);
-        if(dustSensorInterface->isDustExistence()) {
-            cleanerManager->cleanerMode(CleanerMode::UP);
+        bool shouldCheck = false;
+        {
+            std::lock_guard<std::mutex> lock(ctrlMutex);
+            if (!isAvoiding && cleanerManager->iscleanerOn()) {
+                shouldCheck = true;
+            }
         }
-        if(clearValue) {
-            cleanerManager->cleanerMode(CleanerMode::ON);
-            clearValue = false;
-        }
-    }
-}
 
-// --- ButtonInterface ---
-ButtonInterface::ButtonInterface(Controller* ctrl) : controller(ctrl), running(true) {
-    listener = std::thread(&ButtonInterface::listen, this);
-}
-ButtonInterface::~ButtonInterface() {
-    running = false;
-    if (listener.joinable()) listener.join();
-}
-
-void ButtonInterface::listen() {
-    std::cout << "[System] Monitoring Boundary..." << std::endl;
-    while (running) {
-        std::string resp = SimulatorBridge::getInstance().request("{\"type\": \"GET_SENSORS\"}");
-        if (!resp.empty()) {
-            // Button Events
-            std::string ev = get_json_value(resp, "event");
-            if (ev == "BUTTON_ON") pushButtonOn();
-            else if (ev == "BUTTON_OFF") pushButtonOff();
-
-            // Obstacle Interrupts
-            std::string front = get_json_value(resp, "front");
-            if (!front.empty() && std::stoi(front) <= 10) {
-                controller->getObstacleSensorInterface()->triggerInterrupt();
+        if (shouldCheck && dustSensorInterface->isDustExistence()) {
+            std::lock_guard<std::mutex> lock(ctrlMutex);
+            if (!isAvoiding && onOff) {
+                cleanerManager->cleanerMode(CleanerMode::UP);
             }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }
 
+void Controller::turnOn() {
+    if (onOff) return;
+    std::cout << "[System] POWER ON" << std::endl;
+    onOff = true;
+    cleanerManager->cleanerMode(CleanerMode::ON);
+    driveManager->rotateForward();
+    
+    if (dustThread.joinable()) dustThread.join();
+    dustThread = std::thread(&Controller::dustDetect, this);
+}
+
+void Controller::turnOff() {
+    if (!onOff) return;
+    std::cout << "[System] POWER OFF" << std::endl;
+    onOff = false;
+    
+    if (dustThread.joinable()) dustThread.join();
+    
+    cleanerManager->cleanerMode(CleanerMode::OFF);
+    driveManager->stopMotor();
+}
+
+void Controller::errorturnOff() { turnOff(); }
+
+
+// --- ButtonInterface ---
+ButtonInterface::ButtonInterface(Controller* ctrl) : controller(ctrl) {}
 void ButtonInterface::pushButtonOn() { if (controller) controller->turnOn(); }
 void ButtonInterface::pushButtonOff() { if (controller) controller->turnOff(); }

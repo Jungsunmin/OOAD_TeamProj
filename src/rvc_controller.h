@@ -9,28 +9,19 @@
 #include <atomic>
 #include <mutex>
 
+// --- Forward Declarations ---
+class ObstacleSensorInterface;
+class DustSensorInterface;
+class PathPlanner;
+class DriveManager;
+class CleanerManager;
+class Controller;
+
 // --- Enums & Structs ---
 
-enum class Location {
-    FRONT,
-    LEFT,
-    RIGHT,
-    REAR
-};
-
-enum class Driving {
-    MOVEFORWARD,
-    TURNLEFT,
-    TURNRIGHT,
-    MOVEBACKWARD,
-    STOP
-};
-
-enum class CleanerMode {
-    OFF,
-    ON,
-    UP
-};
+enum class Location { FRONT, LEFT, RIGHT, REAR };
+enum class Driving { MOVEFORWARD, TURNLEFT, TURNRIGHT, MOVEBACKWARD, STOP };
+enum class CleanerMode { OFF, ON, UP };
 
 struct ObstacleStatus {
     bool frontBlocked;
@@ -38,12 +29,11 @@ struct ObstacleStatus {
     bool rightBlocked;
 };
 
-// --- Boundary Interfaces ---
+// --- Inㅇterfaces & Components ---
 
 class Timer {
 private:
     unsigned long duration;
-
 public:
     Timer(unsigned long ms = 0);
     void setTimer();
@@ -51,24 +41,29 @@ public:
 
 class ObstacleSensorInterface {
 private:
-    const int THRESHOLD = 10;
     std::function<void()> onEmergency = nullptr;
+    std::thread listenerThread;
+    std::atomic<bool> running;
+    Controller* ctrl_ref = nullptr; // Reference to trigger other events
+    void listen();
 
 public:
     ObstacleSensorInterface();
+    ~ObstacleSensorInterface();
+    
+    // Blocking/Event Registration
+    void attachInterrupt(std::function<void()> cb);
+    void setController(Controller* c) { ctrl_ref = c; }
+    
+    // On-demand Polling
     bool isFrontBlocked();
     bool isLeftBlocked();
-    bool isRightBlocked(); 
+    bool isRightBlocked();
     ObstacleStatus isObstacleExist();
-    void attachInterrupt(std::function<void()> cb);
-    void triggerInterrupt();
 };
 
 class DustSensorInterface {
-private:
-    const int DUST_EXISTENCE_THRESHOLD = 60;
 public:
-    DustSensorInterface();
     bool isDustExistence();
 };
 
@@ -84,15 +79,15 @@ class DriveManager {
 private:
     PathPlanner* pathPlanner;
     Driving currentDriveState;
-    Timer timer;
+    Timer turnTimer;
 public:
     DriveManager(PathPlanner* pp);
     Location avoidObstacle();
     void rotateForward();
     void rotateLeft();
     void rotateRight();
-    void stopMotor();
     void rotateBackward();
+    void stopMotor();
     void sendDriveCommand(Driving state);
     Driving getCurrentState() const { return currentDriveState; }
 };
@@ -100,12 +95,12 @@ public:
 class CleanerManager {
 private:
     CleanerMode currentMode;
-    Timer timer;
+    Timer boostTimer;
 public:
     CleanerManager();
     void cleanerMode(CleanerMode mode);
+    bool iscleanerOn();
     void sendCleanerCommand(CleanerMode mode);
-    void updateTimer();
     CleanerMode getCurrentMode() const { return currentMode; }
 };
 
@@ -116,35 +111,27 @@ private:
     DustSensorInterface* dustSensorInterface;
     ObstacleSensorInterface* obstacleSensorInterface;
 
-    bool onOff = false;
-    bool clearValue = false;
+    std::atomic<bool> onOff = false;
+    bool isAvoiding = false;
     std::thread dustThread;
+    std::mutex ctrlMutex;
 
-    void errorturnOff();
-    void clearDustValue();
-    void resumeSideSensorCheck();
-    void dustDetect();
 public:
-    Controller(DriveManager* drive, CleanerManager* cleaner, DustSensorInterface* dsi, ObstacleSensorInterface* osi);
+    Controller(DriveManager* d, CleanerManager* c, DustSensorInterface* ds, ObstacleSensorInterface* os);
     ~Controller();
-    void interruptHandler();
-    
+
+    void interruptHandler(); // The Callback Function
     void turnOn(); 
     void turnOff();
-
-    ObstacleSensorInterface* getObstacleSensorInterface() { return obstacleSensorInterface; }
+    void errorturnOff();
+    void dustDetect();
 };
 
 class ButtonInterface {
 private:
     Controller* controller;
-    std::thread listener;
-    std::atomic<bool> running;
-    void listen();
-
 public:
     ButtonInterface(Controller* ctrl);
-    ~ButtonInterface();
     void pushButtonOn();
     void pushButtonOff();
 };

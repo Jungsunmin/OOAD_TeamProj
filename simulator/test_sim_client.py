@@ -8,12 +8,12 @@ def test_client():
     
     def set_control(move=False, turn=0, clean=False):
         req = {"type": "SET_CONTROL", "move": move, "turn": turn, "clean": clean}
-        client.sendall(json.dumps(req).encode())
+        client.sendall((json.dumps(req) + "\n").encode())
         return json.loads(client.recv(1024).decode())
 
     def get_sensors():
         req = {"type": "GET_SENSORS"}
-        client.sendall(json.dumps(req).encode())
+        client.sendall((json.dumps(req) + "\n").encode())
         return json.loads(client.recv(1024).decode())
 
     print("Initial State:", get_sensors())

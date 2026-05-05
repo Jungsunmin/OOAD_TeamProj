@@ -1,17 +1,14 @@
-import pygame
-print("Simulator script starting...")
 import sys
 import socket
 import json
 import threading
 import math
 import random
+import time
 
 # --- Configuration ---
 MAP_SIZE = 10.0
 GRID_DIVISIONS = 10
-CELL_SIZE = 60
-WINDOW_SIZE = GRID_DIVISIONS * CELL_SIZE
 FPS = 30
 
 # --- Hardware Specs ---
@@ -21,22 +18,11 @@ LINEAR_SPEED = 1.0
 ANGULAR_SPEED = math.radians(90)
 INTERRUPT_THRESHOLD = 10 
 
-class RVCSimulator:
+class HeadlessSimulator:
     def __init__(self):
-        pygame.init()
-        self.screen = pygame.display.set_mode((WINDOW_SIZE + 200, WINDOW_SIZE))
-        pygame.display.set_caption("RVC Stable Multi-Connection")
-        self.clock = pygame.time.Clock()
-        self.font = pygame.font.SysFont(None, 22)
-        
         self.lock = threading.Lock()
         self.running = True
         self.clients = [] 
-        
-        self.btn_on_rect = pygame.Rect(WINDOW_SIZE + 20, 50, 160, 40)
-        self.btn_off_rect = pygame.Rect(WINDOW_SIZE + 20, 100, 160, 40)
-        self.btn_reset_rect = pygame.Rect(WINDOW_SIZE + 20, 150, 160, 40)
-        
         self.prev_front_blocked = False
         self.reset_environment()
 
@@ -48,8 +34,7 @@ class RVCSimulator:
             self.moving, self.turning, self.cleaning = False, 0, False
             self.cleaner_mode = "OFF"
             self.prev_front_blocked = False
-            self.broadcast_event({"type": "EVENT", "name": "RESET"})
-            print("Simulator: Environment Reset.")
+            print("Headless Simulator: Environment Reset.")
 
     def broadcast_event(self, event_data):
         msg = (json.dumps(event_data) + "\n").encode()
@@ -125,6 +110,13 @@ class RVCSimulator:
                                 self.cleaning = req.get('clean', self.cleaning)
                                 self.cleaner_mode = req.get('mode', self.cleaner_mode)
                             conn.sendall(b"{\"status\":\"ok\"}\n")
+                        elif req['type'] == 'TRIGGER_EVENT':
+                            print(f"Triggering Event: {req['name']}")
+                            if req['name'] == 'INTERRUPT':
+                                self.broadcast_event({"type": "INTERRUPT"})
+                            else:
+                                self.broadcast_event({"type": "EVENT", "name": req['name']})
+                            conn.sendall(b"{\"status\":\"ok\"}\n")
                     except Exception as e:
                         print(f"Simulator: Request Error {e}")
         except: pass
@@ -137,48 +129,19 @@ class RVCSimulator:
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind(('localhost', 12345)); server.listen(10)
+        print("Headless Server listening on 12345")
         while self.running:
             try:
                 conn, addr = server.accept()
                 threading.Thread(target=self.handle_client, args=(conn, addr), daemon=True).start()
             except: break
 
-    def draw(self):
-        self.screen.fill((255,255,255))
-        for y in range(GRID_DIVISIONS):
-            for x in range(GRID_DIVISIONS):
-                rect = pygame.Rect(x*60, y*60, 60, 60)
-                d = self.dust_map[y][x]
-                alpha = d / float(MAX_VAL)
-                color = (int(255*(1-alpha)+240*alpha), int(255*(1-alpha)+230*alpha), int(255*(1-alpha)+140*alpha))
-                pygame.draw.rect(self.screen, color, rect); pygame.draw.rect(self.screen, (220, 220, 220), rect, 1)
-
-        sx, sy = int(self.pos_x*60), int(self.pos_y*60)
-        rad = int(RVC_RADIUS*60)
-        sensors = self.get_sensor_data_internal()
-        pygame.draw.circle(self.screen, (255,255,0) if sensors['front'] <= 10 else (255,0,0), (sx, sy), rad)
-        pygame.draw.line(self.screen, (0,255,0), (sx, sy), (sx + int(math.cos(self.angle)*rad*1.5), sy + int(math.sin(self.angle)*rad*1.5)), 3)
-        pygame.draw.rect(self.screen, (200,200,200), (600, 0, 200, 600))
-        pygame.draw.rect(self.screen, (0,255,0), self.btn_on_rect); self.screen.blit(self.font.render("POWER ON", True, (255,255,255)), (660, 62))
-        pygame.draw.rect(self.screen, (255,0,0), self.btn_off_rect); self.screen.blit(self.font.render("POWER OFF", True, (255,255,255)), (658, 112))
-        pygame.draw.rect(self.screen, (255,165,0), self.btn_reset_rect); self.screen.blit(self.font.render("RESET MAP", True, (255,255,255)), (658, 162))
-        self.screen.blit(self.font.render(f"Cleaner: {self.cleaner_mode}", True, (0,0,0)), (620, 230))
-        pygame.display.flip()
-
     def main_loop(self):
         while self.running:
-            for ev in pygame.event.get():
-                if ev.type == pygame.QUIT: self.running = False
-                if ev.type == pygame.MOUSEBUTTONDOWN:
-                    if self.btn_on_rect.collidepoint(ev.pos): self.broadcast_event({"type": "EVENT", "name": "BUTTON_ON"})
-                    if self.btn_off_rect.collidepoint(ev.pos): self.broadcast_event({"type": "EVENT", "name": "BUTTON_OFF"})
-                    if self.btn_reset_rect.collidepoint(ev.pos): self.reset_environment()
-            self.update_physics(1.0/FPS); self.draw(); self.clock.tick(FPS)
-        pygame.quit()
+            self.update_physics(1.0/FPS)
+            time.sleep(1.0/FPS)
 
 if __name__ == "__main__":
-    print("Simulator: Starting Server Thread...")
-    sim = RVCSimulator()
+    sim = HeadlessSimulator()
     threading.Thread(target=sim.run_server, daemon=True).start()
-    print("Simulator: Server Thread Started. Entering Main Loop (GUI)...")
     sim.main_loop()
