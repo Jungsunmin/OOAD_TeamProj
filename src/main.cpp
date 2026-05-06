@@ -5,6 +5,7 @@
 #include <csignal>
 
 int main() {
+    
     std::cout << "RVC Software System Starting..." << std::endl;
     std::cout << "Connecting to Simulator on localhost:12345..." << std::endl;
 
