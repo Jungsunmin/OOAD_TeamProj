@@ -311,15 +311,15 @@ void Controller::avoidanceAction() {
     if (turnLocation == Location::LEFT) {
         
         if (obstacleSensorInterface->isRightBlocked()) {
-            errorturnOff();
-            //cleanerManager->cleanerMode(CleanerMode::ON);   //계속 이쪽코드에서 비정상적으로 종료됨, 일단 errorturnOff 무시
+            //errorturnOff();
+            cleanerManager->cleanerMode(CleanerMode::ON);   //계속 이쪽코드에서 비정상적으로 종료됨, 일단 errorturnOff 무시
         } else {
             cleanerManager->cleanerMode(CleanerMode::ON);
         }
     } else if (turnLocation == Location::RIGHT) {
         if (obstacleSensorInterface->isLeftBlocked()) {
-            errorturnOff();
-            //cleanerManager->cleanerMode(CleanerMode::ON);
+            //errorturnOff();
+            cleanerManager->cleanerMode(CleanerMode::ON);
         } else {
             cleanerManager->cleanerMode(CleanerMode::ON);
         }
