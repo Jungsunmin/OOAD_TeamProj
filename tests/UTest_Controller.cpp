@@ -54,7 +54,7 @@ TEST_F(ControllerTest, TurnOff_CallsComponents) {
 }
 
 // 3. 장애물 감지 시 회피 로직 호출 검증
-TEST_F(ControllerTest, AvoidanceLoop_TriggersAvoidance) {
+TEST_F(ControllerTest, avoidanceAction_TriggersAvoidance) {
     // onOff를 true로 설정하여 루프 진입 가능하게 함 (protected 접근)
     struct TestController : public Controller {
         using Controller::onOff;
@@ -73,7 +73,7 @@ TEST_F(ControllerTest, AvoidanceLoop_TriggersAvoidance) {
     EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::ON)).Times(AtLeast(1));
     
     // 루프를 한 번 돌리고 빠져나오기 위해 별도 스레드에서 실행
-    std::thread t(&Controller::avoidanceLoop, testCtrl);
+    std::thread t(&Controller::avoidanceAction, testCtrl);
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
     testCtrl->onOff = false;
     t.join();

@@ -55,7 +55,7 @@ public:
     MOCK_METHOD(void, turnOff, (), (override));
     MOCK_METHOD(void, errorturnOff, (), (override));
     MOCK_METHOD(void, dustDetect, (), (override));
-    MOCK_METHOD(void, avoidanceLoop, (), (override));
+    MOCK_METHOD(void, avoidanceAction, (), (override));
 };
 
 #endif //RVC_SW_CONTROLLER_UTEST_MOCK_H

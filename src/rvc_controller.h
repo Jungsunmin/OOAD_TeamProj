@@ -138,10 +138,10 @@ protected:
     std::atomic<bool> onOff{false};
     bool isAvoiding = false;
     std::atomic<bool> isAlarmSigExist = false;
+    std::atomic<bool> frontObstacleTriggered{false};
     std::thread dustThread;
     std::thread obstacleThread;
     std::mutex ctrlMutex;
-    std::mutex timerMutex;
     void boosterOverHandler();
 
 public:
@@ -153,7 +153,7 @@ public:
     virtual void turnOff();
     virtual void errorturnOff();
     virtual void dustDetect();
-    virtual void avoidanceLoop();
+    virtual void avoidanceAction();
 };
 
 class ButtonInterface {

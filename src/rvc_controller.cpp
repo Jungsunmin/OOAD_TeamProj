@@ -280,127 +280,113 @@ Controller::Controller(DriveManager* d, CleanerManager* c, DustSensorInterface* 
 Controller::~Controller() { 
     onOff = false; 
     if (dustThread.joinable()) dustThread.join(); 
-    if (obstacleThread.joinable()) obstacleThread.join();
+    //if (obstacleThread.joinable()) obstacleThread.join();
 }
 
 void Controller::interruptHandler() {
-    // Refactored to avoidanceLoop
+    driveManager->stopMotor();
+    this->frontObstacleTriggered.store(true);
 }
 
-void Controller::avoidanceLoop() {
-    while(onOff) {
-        if (obstacleSensorInterface->isFrontBlocked()) {
-            {
-                std::lock_guard<std::mutex> lock(ctrlMutex);
-                isAvoiding = true;
+void Controller::avoidanceAction() {
 
-                driveManager->stopMotor();
-                std::cout<<"front sensor interrupt"<<std::endl;
-                usleep(1000);
-            }
-            
+    driveManager->stopMotor();
+    std::cout<<"front sensor interrupt"<<std::endl;
+    usleep(1000);
 
-            std::cout << "[System] Obstacle Detected! Starting Avoidance..." << std::endl;
-            cleanerManager->cleanerMode(CleanerMode::OFF);
-            
-            Location turnLocation = driveManager->avoidObstacle();
-            
-            
-            this->isAlarmSigExist.store(false); //혹시라도 removeTimer 하기 직전에 시그널을 받았을 경우
-            if (turnLocation == Location::LEFT) {
-                
-                if (obstacleSensorInterface->isRightBlocked()) {
-                    errorturnOff();
-                    cleanerManager->cleanerMode(CleanerMode::ON);   //계속 이쪽코드에서 비정상적으로 종료됨, 일단 errorturnOff 무시
-                } else {
-                    cleanerManager->cleanerMode(CleanerMode::ON);
-                }
-            } else if (turnLocation == Location::RIGHT) {
-                if (obstacleSensorInterface->isLeftBlocked()) {
-                    errorturnOff();
-                    cleanerManager->cleanerMode(CleanerMode::ON);
-                } else {
-                    cleanerManager->cleanerMode(CleanerMode::ON);
-                }
-            } else {
-                while(onOff) {
-                    obstacleSensorInterface->isFrontBlocked(); 
-                    if (!obstacleSensorInterface->isLeftBlocked()){
-                        // std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                        driveManager->rotateLeftb();
-                        break;
-                    }
-                    else if (!obstacleSensorInterface->isRightBlocked()){
-                        // std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                        driveManager->rotateRightb();
-                        break;
-                    }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                }
-                cleanerManager->cleanerMode(CleanerMode::ON);
-                printf("asdf");
-            }
-
-            {
-                std::lock_guard<std::mutex> lock(ctrlMutex);
-                isAvoiding = false;
-            }
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::cout << "[System] Obstacle Detected! Starting Avoidance..." << std::endl;
+    cleanerManager->cleanerMode(CleanerMode::OFF);
+    
+    Location turnLocation = driveManager->avoidObstacle();
+    
+    if (obstacleSensorInterface->isFrontBlocked()) {
+        std::cout << "[System] Still Blocked! Maintaining Flag..." << std::endl;
+        // 플래그를 false로 바꾸지 않고 함수를 종료하면, 
+        // dustDetect 루프에 의해 다음번에 다시 이 함수 호출
+        return; 
     }
-}
 
+    this->frontObstacleTriggered.store(false);  //회피후, 다시 인터럽트를 받을 수 있는 상태가 되었기 때문에, 인터럽트 플래그 값을 다시 false로
+
+    this->isAlarmSigExist.store(false); //혹시라도 removeTimer 하기 직전에 시그널을 받았을 경우
+    if (turnLocation == Location::LEFT) {
+        
+        if (obstacleSensorInterface->isRightBlocked()) {
+            errorturnOff();
+            cleanerManager->cleanerMode(CleanerMode::ON);   //계속 이쪽코드에서 비정상적으로 종료됨, 일단 errorturnOff 무시
+        } else {
+            cleanerManager->cleanerMode(CleanerMode::ON);
+        }
+    } else if (turnLocation == Location::RIGHT) {
+        if (obstacleSensorInterface->isLeftBlocked()) {
+            errorturnOff();
+            cleanerManager->cleanerMode(CleanerMode::ON);
+        } else {
+            cleanerManager->cleanerMode(CleanerMode::ON);
+        }
+    } else {
+        while(onOff) {
+            obstacleSensorInterface->isFrontBlocked(); 
+            if (!obstacleSensorInterface->isLeftBlocked()){
+                // std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                driveManager->rotateLeftb();
+                break;
+            }
+            else if (!obstacleSensorInterface->isRightBlocked()){
+                // std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                driveManager->rotateRightb();
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        cleanerManager->cleanerMode(CleanerMode::ON);
+        printf("asdf");
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+}
 void Controller::boosterOverHandler() {
     this->isAlarmSigExist.store(true);
 }
 
 void Controller::dustDetect() {
     while(onOff) {
-        
-        bool canCheck = false;
-        {
-            std::lock_guard<std::mutex> lock(ctrlMutex);
-            if (!isAvoiding && cleanerManager->iscleanerOn()) {
-                canCheck = true;
-            }
+        if (frontObstacleTriggered.load()) {
+            avoidanceAction(); // 회피 함수 호출
+            continue;   //회피후, 다시 루프를 돌면서 회피동작을 체크해서 연속해서 회피를 해야할 케이스 커버
         }
 
+        if (this->isAlarmSigExist.load() && cleanerManager->isBoosterOn() ) {
+            cleanerManager->cleanerMode(CleanerMode::ON);  //타이머가 종료했는데, 부스터 모드일 경우
+            this->isAlarmSigExist.store(false);
+        }
+        
+        if (obstacleSensorInterface->isDustExistence()) {
 
-        if (canCheck) {
-            if (this->isAlarmSigExist.load() && cleanerManager->isBoosterOn() ) {
-                cleanerManager->cleanerMode(CleanerMode::ON);  //타이머가 종료했는데, 부스터 모드일 경우
-                this->isAlarmSigExist.store(false);
-            }
-            
-            if (obstacleSensorInterface->isDustExistence()) {
+            if (onOff) {
+                if(cleanerManager->isBoosterOn() == true) {
+                    cleanerManager->cleanerMode(CleanerMode::UP);
+                    //continue;    //대기 스래드를 또 만들지 않음
+                } else {
+                
+                    cleanerManager->cleanerMode(CleanerMode::UP);
+                    std::thread([this]() {
+                        int caught_signal;
 
-                std::lock_guard<std::mutex> lock(ctrlMutex);
-                if (!isAvoiding && onOff) {
-                    if(cleanerManager->isBoosterOn() == true) {
-                        cleanerManager->cleanerMode(CleanerMode::UP);
-                        //continue;    //대기 스래드를 또 만들지 않음
-                    } else {
-                    
-                        cleanerManager->cleanerMode(CleanerMode::UP);
-                        std::thread([this]() {
-                            int caught_signal;
+                        sigset_t wait_set;
+                        sigemptyset(&wait_set);
+                        sigaddset(&wait_set, SIGALRM);
+                        
+                        std::cout << "Waiting for SIGALRM" << std::endl;
+                        // 스레드가 여기서 대기
+                        sigwait(&wait_set, &caught_signal);
 
-                            sigset_t wait_set;
-                            sigemptyset(&wait_set);
-                            sigaddset(&wait_set, SIGALRM);
-                            
-                            std::cout << "Waiting for SIGALRM" << std::endl;
-                            // 스레드가 여기서 대기
-                            sigwait(&wait_set, &caught_signal);
-
-                            // 시그널이 도착하면 아래 로직 실행
-                            if (caught_signal == SIGALRM) {
-                                std::cout << "[Wait-Thread] SIGALRM Caught! Routing to Controller..." << std::endl;
-                                this->boosterOverHandler();
-                            }
-                            
-                        }).detach();
-                    }
+                        // 시그널이 도착하면 아래 로직 실행
+                        if (caught_signal == SIGALRM) {
+                            std::cout << "[Wait-Thread] SIGALRM Caught! Routing to Controller..." << std::endl;
+                            this->boosterOverHandler();
+                        }
+                        
+                    }).detach();
                 }
             }
         }
@@ -413,14 +399,19 @@ void Controller::turnOn() {
     if (onOff) return;
     std::cout << "[System] POWER ON" << std::endl;
     onOff = true;
+
+    if (obstacleSensorInterface->isFrontBlocked()) {        //처음 turn on이 되었을때, 정면센서 값이 threshold값보다 작을경우 인터럽트 발생을 못함, 때문에 시작후 한번 체크
+        this->frontObstacleTriggered.store(true);
+    }
+
     cleanerManager->cleanerMode(CleanerMode::ON);
     driveManager->rotateForward();
     
     if (dustThread.joinable()) dustThread.join();
     dustThread = std::thread(&Controller::dustDetect, this);
 
-    if (obstacleThread.joinable()) obstacleThread.join();
-    obstacleThread = std::thread(&Controller::avoidanceLoop, this);
+    // if (obstacleThread.joinable()) obstacleThread.join();
+    // obstacleThread = std::thread(&Controller::avoidanceLoop, this);
 }
 
 void Controller::turnOff() {
@@ -429,7 +420,7 @@ void Controller::turnOff() {
     onOff = false;
     
     if (dustThread.joinable()) dustThread.join();
-    if (obstacleThread.joinable()) obstacleThread.join();
+    //if (obstacleThread.joinable()) obstacleThread.join();
     
 
     cleanerManager->cleanerMode(CleanerMode::OFF);
