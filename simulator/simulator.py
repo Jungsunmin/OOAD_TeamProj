@@ -21,6 +21,9 @@ RVC_RADIUS = 0.3
 LINEAR_SPEED = 1.0
 ANGULAR_SPEED = math.radians(90)
 INTERRUPT_THRESHOLD = 10 
+FRONT_SENSOR_DRAW_LENGTH = 1.5
+SIDE_SENSOR_DRAW_LENGTH = 1.5
+SIDE_SENSOR_FORWARD_OFFSET = 0.5
 
 class RVCSimulator:
     def __init__(self):
@@ -108,19 +111,24 @@ class RVCSimulator:
             self.broadcast_event({"type": "INTERRUPT", "source": "FRONT_SENSOR"})
 
     def get_sensor_data_internal(self):
-        def raycast_all(ray_angle):
+        def raycast_all(ray_angle, origin_x=None, origin_y=None):
+            if origin_x is None:
+                origin_x = self.pos_x
+            if origin_y is None:
+                origin_y = self.pos_y
+
             dx, dy = math.cos(ray_angle), math.sin(ray_angle)
             dists = []
-            if dx > 0: dists.append((MAP_SIZE - self.pos_x) / dx)
-            elif dx < 0: dists.append((0 - self.pos_x) / dx)
-            if dy > 0: dists.append((MAP_SIZE - self.pos_y) / dy)
-            elif dy < 0: dists.append((0 - self.pos_y) / dy)
+            if dx > 0: dists.append((MAP_SIZE - origin_x) / dx)
+            elif dx < 0: dists.append((0 - origin_x) / dx)
+            if dy > 0: dists.append((MAP_SIZE - origin_y) / dy)
+            elif dy < 0: dists.append((0 - origin_y) / dy)
             d_boundary = min([d for d in dists if d >= 0]) if dists else MAP_SIZE
             
             d_wall = MAP_SIZE
             step = 0.05
             for d in [i * step for i in range(1, int(d_boundary/step))]:
-                if self.is_wall(self.pos_x + dx * d, self.pos_y + dy * d):
+                if self.is_wall(origin_x + dx * d, origin_y + dy * d):
                     d_wall = d
                     break
             
@@ -129,10 +137,14 @@ class RVCSimulator:
 
         gx, gy = int(self.pos_x), int(self.pos_y)
         dust_val = self.dust_map[gy][gx] if (0 <= gx < 10 and 0 <= gy < 10) else 0
+
+        side_origin_x = self.pos_x + math.cos(self.angle) * SIDE_SENSOR_FORWARD_OFFSET
+        side_origin_y = self.pos_y + math.sin(self.angle) * SIDE_SENSOR_FORWARD_OFFSET
+
         return {
             "front": raycast_all(self.angle),
-            "left": raycast_all(self.angle - math.radians(90)),
-            "right": raycast_all(self.angle + math.radians(90)),
+            "left": raycast_all(self.angle - math.radians(90), side_origin_x, side_origin_y),
+            "right": raycast_all(self.angle + math.radians(90), side_origin_x, side_origin_y),
             "dust": int(dust_val),
             "pos": (round(self.pos_x, 2), round(self.pos_y, 2))
         }
@@ -213,11 +225,17 @@ class RVCSimulator:
                     
                 pygame.draw.rect(self.screen, (220, 220, 220), rect, 1)
 
-        sx, sy = int(self.pos_x*60), int(self.pos_y*60)
-        rad = int(RVC_RADIUS*60)
+        sx, sy = int(self.pos_x * CELL_SIZE), int(self.pos_y * CELL_SIZE)
+        rad = int(RVC_RADIUS * CELL_SIZE)
         sensors = self.get_sensor_data_internal()
-        pygame.draw.circle(self.screen, (255,255,0) if sensors['front'] <= 10 else (255,0,0), (sx, sy), rad)
-        pygame.draw.line(self.screen, (0,255,0), (sx, sy), (sx + int(math.cos(self.angle)*rad*1.5), sy + int(math.sin(self.angle)*rad*1.5)), 3)
+
+        side_sx = int((self.pos_x + math.cos(self.angle) * SIDE_SENSOR_FORWARD_OFFSET) * CELL_SIZE)
+        side_sy = int((self.pos_y + math.sin(self.angle) * SIDE_SENSOR_FORWARD_OFFSET) * CELL_SIZE)
+
+        pygame.draw.circle(self.screen, (255,255,0) if sensors['front'] <= INTERRUPT_THRESHOLD else (255,0,0), (sx, sy), rad)
+        pygame.draw.line(self.screen, (0,255,0), (sx, sy), (sx + int(math.cos(self.angle) * rad * FRONT_SENSOR_DRAW_LENGTH), sy + int(math.sin(self.angle) * rad * FRONT_SENSOR_DRAW_LENGTH)), 3)
+        pygame.draw.line(self.screen, (0,255,0), (side_sx, side_sy), (side_sx + int(math.cos(self.angle - math.radians(90)) * rad * SIDE_SENSOR_DRAW_LENGTH), side_sy + int(math.sin(self.angle - math.radians(90)) * rad * SIDE_SENSOR_DRAW_LENGTH)), 3)
+        pygame.draw.line(self.screen, (0,255,0), (side_sx, side_sy), (side_sx + int(math.cos(self.angle + math.radians(90)) * rad * SIDE_SENSOR_DRAW_LENGTH), side_sy + int(math.sin(self.angle + math.radians(90)) * rad * SIDE_SENSOR_DRAW_LENGTH)), 3)
         pygame.draw.rect(self.screen, (200,200,200), (600, 0, 200, 600))
         pygame.draw.rect(self.screen, (0,255,0), self.btn_on_rect); self.screen.blit(self.font.render("POWER ON", True, (255,255,255)), (660, 62))
         pygame.draw.rect(self.screen, (255,0,0), self.btn_off_rect); self.screen.blit(self.font.render("POWER OFF", True, (255,255,255)), (658, 112))
@@ -272,8 +290,8 @@ class RVCSimulator:
                         gy = ev.pos[1] // CELL_SIZE
                         with self.lock:
                             if ev.button == 1: # 좌클릭 먼지 생성 삭제
-                                self.dust_map[gy][gx] = MAX_VAL if self.dust_map[gy][gx] == 0 else 0
-                                print(f"Dust toggled at: {gx}, {gy}")
+                                self.dust_map[gy][gx] = random.randint(1, MAX_VAL) if self.dust_map[gy][gx] == 0 else 0
+                                print(f"Dust toggled at: {gx}, {gy} with value {self.dust_map[gy][gx]}")
                             elif ev.button == 3: # 우클릭 (벽 생성/제거 토글)
                                 # 벽이 없으면(0) 만들고(1), 있으면(1) 지웁니다(0)
                                 self.walls[gy][gx] = 1 if self.walls[gy][gx] == 0 else 0

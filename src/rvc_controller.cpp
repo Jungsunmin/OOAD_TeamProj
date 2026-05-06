@@ -326,12 +326,12 @@ void Controller::avoidanceLoop() {
                 while(onOff) {
                     obstacleSensorInterface->isFrontBlocked(); 
                     if (!obstacleSensorInterface->isLeftBlocked()){
-                        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                        // std::this_thread::sleep_for(std::chrono::milliseconds(500));
                         driveManager->rotateLeftb();
                         break;
                     }
                     else if (!obstacleSensorInterface->isRightBlocked()){
-                        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                        // std::this_thread::sleep_for(std::chrono::milliseconds(500));
                         driveManager->rotateRightb();
                         break;
                     }
