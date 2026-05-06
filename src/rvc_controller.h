@@ -31,16 +31,17 @@ struct ObstacleStatus {
     bool rightBlocked;
 };
 
-// --- Inㅇterfaces & Components ---
+// --- Interfaces & Components ---
 
 class Timer {
 private:
     unsigned long duration;
 public:
     Timer(unsigned long ms = 0);
-    void setTimer();
-    void setAlarmTimer();
-    void removeTimer();
+    virtual ~Timer() = default;
+    virtual void setTimer();
+    virtual void setAlarmTimer();
+    virtual void removeTimer();
 };
 
 class ObstacleSensorInterface {
@@ -63,23 +64,24 @@ private:
 
 public:
     ObstacleSensorInterface();
-    ~ObstacleSensorInterface();
+    virtual ~ObstacleSensorInterface();
     
     // Blocking/Event Registration
-    void attachInterrupt(std::function<void()> cb);
-    void setController(Controller* c) { ctrl_ref = c; }
+    virtual void attachInterrupt(std::function<void()> cb);
+    virtual void setController(Controller* c) { ctrl_ref = c; }
     
     // On-demand Polling
-    bool isFrontBlocked();
-    bool isLeftBlocked();
-    bool isRightBlocked();
-    ObstacleStatus isObstacleExist();
-    bool isDustExistence();
+    virtual bool isFrontBlocked();
+    virtual bool isLeftBlocked();
+    virtual bool isRightBlocked();
+    virtual ObstacleStatus isObstacleExist();
+    virtual bool isDustExistence();
 };
 
 class DustSensorInterface {
 public:
-    bool isDustExistence();
+    virtual ~DustSensorInterface() = default;
+    virtual bool isDustExistence();
 };
 
 class PathPlanner {
@@ -87,7 +89,8 @@ private:
     ObstacleSensorInterface* osi;
 public:
     PathPlanner(ObstacleSensorInterface* osi);
-    Location decisionPath();
+    virtual ~PathPlanner() = default;
+    virtual Location decisionPath();
 };
 
 class DriveManager {
@@ -97,15 +100,16 @@ private:
     Timer turnTimer;
 public:
     DriveManager(PathPlanner* pp);
-    Location avoidObstacle();
-    void rotateForward();
-    void rotateLeft();
-    void rotateRight();
-    void rotateBackward();
-    void stopMotor();
-    void sendDriveCommand(Driving state);
-    void rotateLeftb();
-    void rotateRightb();
+    virtual ~DriveManager() = default;
+    virtual Location avoidObstacle();
+    virtual void rotateForward();
+    virtual void rotateLeft();
+    virtual void rotateRight();
+    virtual void rotateBackward();
+    virtual void stopMotor();
+    virtual void sendDriveCommand(Driving state);
+    virtual void rotateLeftb();
+    virtual void rotateRightb();
     Driving getCurrentState() const { return currentDriveState; }
 };
 
@@ -115,15 +119,17 @@ private:
     Timer boostTimer;
 public:
     CleanerManager();
-    void cleanerMode(CleanerMode mode);
-    bool iscleanerOn();
-    bool isBoosterOn(); //
-    void sendCleanerCommand(CleanerMode mode);
+    virtual ~CleanerManager() = default;
+    virtual void cleanerMode(CleanerMode mode);
+    virtual bool iscleanerOn();
+    virtual bool isBoosterOn(); //
+    virtual void sendCleanerCommand(CleanerMode mode);
     CleanerMode getCurrentMode() const { return currentMode; }
 };
 
 class Controller {
-private:
+    friend class ControllerTest;
+protected:
     DriveManager* driveManager;
     CleanerManager* cleanerManager;
     DustSensorInterface* dustSensorInterface;
@@ -140,14 +146,14 @@ private:
 
 public:
     Controller(DriveManager* d, CleanerManager* c, DustSensorInterface* ds, ObstacleSensorInterface* os);
-    ~Controller();
+    virtual ~Controller();
 
-    void interruptHandler(); // The Callback Function
-    void turnOn(); 
-    void turnOff();
-    void errorturnOff();
-    void dustDetect();
-    void avoidanceLoop();
+    virtual void interruptHandler(); // The Callback Function
+    virtual void turnOn(); 
+    virtual void turnOff();
+    virtual void errorturnOff();
+    virtual void dustDetect();
+    virtual void avoidanceLoop();
 };
 
 class ButtonInterface {
@@ -155,6 +161,7 @@ private:
     Controller* controller;
 public:
     ButtonInterface(Controller* ctrl);
-    void pushButtonOn();
-    void pushButtonOff();
+    virtual ~ButtonInterface() = default;
+    virtual void pushButtonOn();
+    virtual void pushButtonOff();
 };

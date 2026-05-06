@@ -11,13 +11,23 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 add_executable(rvc_tests
-  test_rvc_controller.cpp
+  UTest_ButtonInterface.cpp
+  UTest_Controller.cpp
+  UTest_DriveManager.cpp
+  UTest_PathPlanner.cpp
+  UTest_Timer.cpp
+)
+
+target_include_directories(rvc_tests
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/src
 )
 
 target_link_libraries(rvc_tests
   PRIVATE
     rvc
-    GTest::gtest_main
+    GTest::gmock_main
 )
 
 include(GoogleTest)
