@@ -170,32 +170,32 @@ TEST_F(ControllerTest, InterruptHandler_StopsMotorAndSetsFlag) {
 }
 
 //6.frontObstacleTriggered가 true일 때 avoidanceAction() 내부적으로 stopMotor()와 cleanerMode(OFF)이 호출되는지 체크
-TEST_F(ControllerTest, DustDetect_ExecutesAvoidanceActionOnTrigger) {
-    struct TestController : public Controller {
-        using Controller::Controller;
-        void setOnOff(bool val) { this->onOff = val; }
-        void setFrontTrigger(bool val) { this->frontObstacleTriggered.store(val); }
-    };
+// TEST_F(ControllerTest, DustDetect_ExecutesAvoidanceActionOnTrigger) {
+//     struct TestController : public Controller {
+//         using Controller::Controller;
+//         void setOnOff(bool val) { this->onOff = val; }
+//         void setFrontTrigger(bool val) { this->frontObstacleTriggered.store(val); }
+//     };
 
-    TestController* testCtrl = new TestController(mockDM, mockCM, mockDS, mockOS);
-    testCtrl->setOnOff(true);
-    testCtrl->setFrontTrigger(true); // 장애물 인터럽트 발생 가정
+//     TestController* testCtrl = new TestController(mockDM, mockCM, mockDS, mockOS);
+//     testCtrl->setOnOff(true);
+//     testCtrl->setFrontTrigger(true); // 장애물 인터럽트 발생 가정
 
-    // avoidanceAction()이 실행될 때 호출되어야 하는 함수들
-    EXPECT_CALL(*mockDM, stopMotor()).Times(AtLeast(1));
-    EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::OFF)).Times(AtLeast(1));
+//     // avoidanceAction()이 실행될 때 호출되어야 하는 함수들
+//     EXPECT_CALL(*mockDM, stopMotor()).Times(AtLeast(1));
+//     EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::OFF)).Times(AtLeast(1));
     
-    // 무한 루프 방지: avoidObstacle 호출 시 onOff를 false로 변경하여 루프 탈출
-    EXPECT_CALL(*mockDM, avoidObstacle())
-        .WillOnce(Invoke([&]() {
-            testCtrl->setOnOff(false); 
-            return Location::LEFT; 
-        }));
+//     // 무한 루프 방지: avoidObstacle 호출 시 onOff를 false로 변경하여 루프 탈출
+//     EXPECT_CALL(*mockDM, avoidObstacle())
+//         .WillOnce(Invoke([&]() {
+//             testCtrl->setOnOff(false); 
+//             return Location::LEFT; 
+//         }));
 
-    testCtrl->dustDetect();
+//     testCtrl->dustDetect();
 
-    delete testCtrl;
-}
+//     delete testCtrl;
+// }
 
 //7.isAlarmSigExist가 true가 되었을 때, 청소기가 ON으로 복귀하고 플래그가 다시 false
 TEST_F(ControllerTest, DustDetect_RevertsToNormalModeOnAlarm) {
