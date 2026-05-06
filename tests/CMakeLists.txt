@@ -16,6 +16,7 @@ add_executable(rvc_tests
   UTest_DriveManager.cpp
   UTest_PathPlanner.cpp
   UTest_Timer.cpp
+  UTest_CleanerManager.cpp
 )
 
 target_include_directories(rvc_tests
