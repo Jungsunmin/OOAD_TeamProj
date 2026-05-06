@@ -31,18 +31,18 @@
             <td class="headerValue">coverage.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntryLo">51.0&nbsp;%</td>
+            <td class="headerCovTableEntryLo">56.0&nbsp;%</td>
             <td class="headerCovTableEntry">298</td>
-            <td class="headerCovTableEntry">152</td>
+            <td class="headerCovTableEntry">167</td>
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-05-06 16:01:18</td>
+            <td class="headerValue">2026-05-06 16:12:02</td>
             <td></td>
             <td class="headerItem">Functions:</td>
-            <td class="headerCovTableEntryLo">62.7&nbsp;%</td>
+            <td class="headerCovTableEntryLo">68.6&nbsp;%</td>
             <td class="headerCovTableEntry">51</td>
-            <td class="headerCovTableEntry">32</td>
+            <td class="headerCovTableEntry">35</td>
           </tr>
                   <tr><td><img src="../glass.png" width=3 height=3 alt=""></td></tr>
                 </table>
@@ -89,58 +89,58 @@
 <span id="L27"><span class="lineNum">      27</span>              :     int sock = -1;</span>
 <span id="L28"><span class="lineNum">      28</span>              :     std::mutex mtx;</span>
 <span id="L29"><span class="lineNum">      29</span>              : public:</span>
-<span id="L30"><span class="lineNum">      30</span> <span class="tlaGNC tlaBgGNC">          25 :     static SimulatorBridge&amp; getInstance() { static SimulatorBridge instance; return instance; }</span></span>
-<span id="L31"><span class="lineNum">      31</span> <span class="tlaGNC">          25 :     int get_sock() {</span></span>
-<span id="L32"><span class="lineNum">      32</span> <span class="tlaGNC">          25 :         std::lock_guard&lt;std::mutex&gt; lock(mtx);</span></span>
-<span id="L33"><span class="lineNum">      33</span> <span class="tlaGNC">          25 :         if (sock != -1) return sock;</span></span>
-<span id="L34"><span class="lineNum">      34</span> <span class="tlaGNC">          25 :         sock = socket(AF_INET, SOCK_STREAM, 0);</span></span>
+<span id="L30"><span class="lineNum">      30</span> <span class="tlaGNC tlaBgGNC">          31 :     static SimulatorBridge&amp; getInstance() { static SimulatorBridge instance; return instance; }</span></span>
+<span id="L31"><span class="lineNum">      31</span> <span class="tlaGNC">          31 :     int get_sock() {</span></span>
+<span id="L32"><span class="lineNum">      32</span> <span class="tlaGNC">          31 :         std::lock_guard&lt;std::mutex&gt; lock(mtx);</span></span>
+<span id="L33"><span class="lineNum">      33</span> <span class="tlaGNC">          31 :         if (sock != -1) return sock;</span></span>
+<span id="L34"><span class="lineNum">      34</span> <span class="tlaGNC">          31 :         sock = socket(AF_INET, SOCK_STREAM, 0);</span></span>
 <span id="L35"><span class="lineNum">      35</span>              :         struct sockaddr_in addr;</span>
-<span id="L36"><span class="lineNum">      36</span> <span class="tlaGNC">          25 :         addr.sin_family = AF_INET;</span></span>
-<span id="L37"><span class="lineNum">      37</span> <span class="tlaGNC">          25 :         addr.sin_port = htons(12345);</span></span>
-<span id="L38"><span class="lineNum">      38</span> <span class="tlaGNC">          25 :         inet_pton(AF_INET, &quot;127.0.0.1&quot;, &amp;addr.sin_addr);</span></span>
-<span id="L39"><span class="lineNum">      39</span> <span class="tlaGNC">          25 :         if (connect(sock, (struct sockaddr*)&amp;addr, sizeof(addr)) &lt; 0) { close(sock); sock = -1; }</span></span>
-<span id="L40"><span class="lineNum">      40</span> <span class="tlaGNC">          25 :         return sock;</span></span>
-<span id="L41"><span class="lineNum">      41</span> <span class="tlaGNC">          25 :     }</span></span>
-<span id="L42"><span class="lineNum">      42</span> <span class="tlaGNC">          12 :     void send_cmd(const std::string&amp; cmd) {</span></span>
-<span id="L43"><span class="lineNum">      43</span> <span class="tlaGNC">          12 :         int s = get_sock();</span></span>
-<span id="L44"><span class="lineNum">      44</span> <span class="tlaGNC">          12 :         if (s != -1) send(s, (cmd + &quot;\n&quot;).c_str(), cmd.length() + 1, 0);</span></span>
-<span id="L45"><span class="lineNum">      45</span> <span class="tlaGNC">          12 :     }</span></span>
+<span id="L36"><span class="lineNum">      36</span> <span class="tlaGNC">          31 :         addr.sin_family = AF_INET;</span></span>
+<span id="L37"><span class="lineNum">      37</span> <span class="tlaGNC">          31 :         addr.sin_port = htons(12345);</span></span>
+<span id="L38"><span class="lineNum">      38</span> <span class="tlaGNC">          31 :         inet_pton(AF_INET, &quot;127.0.0.1&quot;, &amp;addr.sin_addr);</span></span>
+<span id="L39"><span class="lineNum">      39</span> <span class="tlaGNC">          31 :         if (connect(sock, (struct sockaddr*)&amp;addr, sizeof(addr)) &lt; 0) { close(sock); sock = -1; }</span></span>
+<span id="L40"><span class="lineNum">      40</span> <span class="tlaGNC">          31 :         return sock;</span></span>
+<span id="L41"><span class="lineNum">      41</span> <span class="tlaGNC">          31 :     }</span></span>
+<span id="L42"><span class="lineNum">      42</span> <span class="tlaGNC">          18 :     void send_cmd(const std::string&amp; cmd) {</span></span>
+<span id="L43"><span class="lineNum">      43</span> <span class="tlaGNC">          18 :         int s = get_sock();</span></span>
+<span id="L44"><span class="lineNum">      44</span> <span class="tlaGNC">          18 :         if (s != -1) send(s, (cmd + &quot;\n&quot;).c_str(), cmd.length() + 1, 0);</span></span>
+<span id="L45"><span class="lineNum">      45</span> <span class="tlaGNC">          18 :     }</span></span>
 <span id="L46"><span class="lineNum">      46</span>              : };</span>
 <span id="L47"><span class="lineNum">      47</span>              : </span>
 <span id="L48"><span class="lineNum">      48</span>              : // --- Timer ---</span>
-<span id="L49"><span class="lineNum">      49</span> <span class="tlaGNC">          19 : Timer::Timer(unsigned long ms) : duration(ms) {}</span></span>
+<span id="L49"><span class="lineNum">      49</span> <span class="tlaGNC">          22 : Timer::Timer(unsigned long ms) : duration(ms) {}</span></span>
 <span id="L50"><span class="lineNum">      50</span> <span class="tlaGNC">           3 : void Timer::setTimer() {</span></span>
 <span id="L51"><span class="lineNum">      51</span> <span class="tlaGNC">           3 :     std::this_thread::sleep_for(std::chrono::milliseconds(duration));</span></span>
 <span id="L52"><span class="lineNum">      52</span> <span class="tlaGNC">           3 : }</span></span>
 <span id="L53"><span class="lineNum">      53</span>              : </span>
-<span id="L54"><span class="lineNum">      54</span> <span class="tlaGNC">           1 : void Timer::setAlarmTimer() {</span></span>
+<span id="L54"><span class="lineNum">      54</span> <span class="tlaGNC">           2 : void Timer::setAlarmTimer() {</span></span>
 <span id="L55"><span class="lineNum">      55</span>              : </span>
 <span id="L56"><span class="lineNum">      56</span>              :     struct itimerval timer_struct;</span>
 <span id="L57"><span class="lineNum">      57</span>              : </span>
-<span id="L58"><span class="lineNum">      58</span> <span class="tlaGNC">           1 :     timer_struct.it_value.tv_sec = 1;            // 1초</span></span>
-<span id="L59"><span class="lineNum">      59</span> <span class="tlaGNC">           1 :     timer_struct.it_value.tv_usec = 0;       // 0 마이크로초</span></span>
+<span id="L58"><span class="lineNum">      58</span> <span class="tlaGNC">           2 :     timer_struct.it_value.tv_sec = 1;            // 1초</span></span>
+<span id="L59"><span class="lineNum">      59</span> <span class="tlaGNC">           2 :     timer_struct.it_value.tv_usec = 0;       // 0 마이크로초</span></span>
 <span id="L60"><span class="lineNum">      60</span>              : </span>
-<span id="L61"><span class="lineNum">      61</span> <span class="tlaGNC">           1 :     timer_struct.it_interval.tv_sec = 0;</span></span>
-<span id="L62"><span class="lineNum">      62</span> <span class="tlaGNC">           1 :     timer_struct.it_interval.tv_usec = 0;</span></span>
+<span id="L61"><span class="lineNum">      61</span> <span class="tlaGNC">           2 :     timer_struct.it_interval.tv_sec = 0;</span></span>
+<span id="L62"><span class="lineNum">      62</span> <span class="tlaGNC">           2 :     timer_struct.it_interval.tv_usec = 0;</span></span>
 <span id="L63"><span class="lineNum">      63</span>              : </span>
 <span id="L64"><span class="lineNum">      64</span>              :     //타이머 설정</span>
-<span id="L65"><span class="lineNum">      65</span> <span class="tlaGNC">           1 :     std::cout &lt;&lt; &quot;[System] Starting 1000ms timer&quot; &lt;&lt; std::endl;</span></span>
-<span id="L66"><span class="lineNum">      66</span> <span class="tlaGNC">           1 :     if (setitimer(ITIMER_REAL, &amp;timer_struct, nullptr) == -1) {</span></span>
+<span id="L65"><span class="lineNum">      65</span> <span class="tlaGNC">           2 :     std::cout &lt;&lt; &quot;[System] Starting 1000ms timer&quot; &lt;&lt; std::endl;</span></span>
+<span id="L66"><span class="lineNum">      66</span> <span class="tlaGNC">           2 :     if (setitimer(ITIMER_REAL, &amp;timer_struct, nullptr) == -1) {</span></span>
 <span id="L67"><span class="lineNum">      67</span> <span class="tlaUNC tlaBgUNC">           0 :         std::cerr &lt;&lt; &quot;Timer setup failed!&quot; &lt;&lt; std::endl;</span></span>
 <span id="L68"><span class="lineNum">      68</span>              :     }</span>
-<span id="L69"><span class="lineNum">      69</span> <span class="tlaGNC tlaBgGNC">           1 : }</span></span>
+<span id="L69"><span class="lineNum">      69</span> <span class="tlaGNC tlaBgGNC">           2 : }</span></span>
 <span id="L70"><span class="lineNum">      70</span>              : </span>
-<span id="L71"><span class="lineNum">      71</span> <span class="tlaGNC">           5 : void Timer::removeTimer() {</span></span>
+<span id="L71"><span class="lineNum">      71</span> <span class="tlaGNC">           8 : void Timer::removeTimer() {</span></span>
 <span id="L72"><span class="lineNum">      72</span>              :     struct itimerval stop_timer;</span>
 <span id="L73"><span class="lineNum">      73</span>              : </span>
-<span id="L74"><span class="lineNum">      74</span> <span class="tlaGNC">           5 :     stop_timer.it_value.tv_sec = 0;</span></span>
-<span id="L75"><span class="lineNum">      75</span> <span class="tlaGNC">           5 :     stop_timer.it_value.tv_usec = 0;</span></span>
-<span id="L76"><span class="lineNum">      76</span> <span class="tlaGNC">           5 :     stop_timer.it_interval.tv_sec = 0;</span></span>
-<span id="L77"><span class="lineNum">      77</span> <span class="tlaGNC">           5 :     stop_timer.it_interval.tv_usec = 0;</span></span>
+<span id="L74"><span class="lineNum">      74</span> <span class="tlaGNC">           8 :     stop_timer.it_value.tv_sec = 0;</span></span>
+<span id="L75"><span class="lineNum">      75</span> <span class="tlaGNC">           8 :     stop_timer.it_value.tv_usec = 0;</span></span>
+<span id="L76"><span class="lineNum">      76</span> <span class="tlaGNC">           8 :     stop_timer.it_interval.tv_sec = 0;</span></span>
+<span id="L77"><span class="lineNum">      77</span> <span class="tlaGNC">           8 :     stop_timer.it_interval.tv_usec = 0;</span></span>
 <span id="L78"><span class="lineNum">      78</span>              : </span>
-<span id="L79"><span class="lineNum">      79</span> <span class="tlaGNC">           5 :     setitimer(ITIMER_REAL, &amp;stop_timer, nullptr);</span></span>
+<span id="L79"><span class="lineNum">      79</span> <span class="tlaGNC">           8 :     setitimer(ITIMER_REAL, &amp;stop_timer, nullptr);</span></span>
 <span id="L80"><span class="lineNum">      80</span>              : </span>
-<span id="L81"><span class="lineNum">      81</span> <span class="tlaGNC">           5 : }</span></span>
+<span id="L81"><span class="lineNum">      81</span> <span class="tlaGNC">           8 : }</span></span>
 <span id="L82"><span class="lineNum">      82</span>              : </span>
 <span id="L83"><span class="lineNum">      83</span>              : // --- ObstacleSensorInterface ---</span>
 <span id="L84"><span class="lineNum">      84</span> <span class="tlaGNC">          11 : ObstacleSensorInterface::ObstacleSensorInterface() : running(true) {</span></span>
@@ -308,27 +308,27 @@
 <span id="L246"><span class="lineNum">     246</span> <span class="tlaGNC">           1 :     rotateForward(); </span></span>
 <span id="L247"><span class="lineNum">     247</span> <span class="tlaGNC">           1 : }</span></span>
 <span id="L248"><span class="lineNum">     248</span>              : // --- CleanerManager ---</span>
-<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC">           5 : CleanerManager::CleanerManager() : currentMode(CleanerMode::OFF), boostTimer(3000) {}</span></span>
-<span id="L250"><span class="lineNum">     250</span> <span class="tlaUNC tlaBgUNC">           0 : void CleanerManager::cleanerMode(CleanerMode mode) {</span></span>
-<span id="L251"><span class="lineNum">     251</span> <span class="tlaUNC">           0 :     if (currentMode == mode &amp;&amp; mode != CleanerMode::UP) return;</span></span>
-<span id="L252"><span class="lineNum">     252</span> <span class="tlaUNC">           0 :     currentMode = mode;</span></span>
-<span id="L253"><span class="lineNum">     253</span> <span class="tlaUNC">           0 :     sendCleanerCommand(mode);</span></span>
-<span id="L254"><span class="lineNum">     254</span> <span class="tlaUNC">           0 :     if (mode == CleanerMode::OFF) {</span></span>
-<span id="L255"><span class="lineNum">     255</span> <span class="tlaUNC">           0 :         boostTimer.removeTimer();</span></span>
+<span id="L249"><span class="lineNum">     249</span> <span class="tlaGNC">           8 : CleanerManager::CleanerManager() : currentMode(CleanerMode::OFF), boostTimer(3000) {}</span></span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaGNC">           9 : void CleanerManager::cleanerMode(CleanerMode mode) {</span></span>
+<span id="L251"><span class="lineNum">     251</span> <span class="tlaGNC">           9 :     if (currentMode == mode &amp;&amp; mode != CleanerMode::UP) return;</span></span>
+<span id="L252"><span class="lineNum">     252</span> <span class="tlaGNC">           6 :     currentMode = mode;</span></span>
+<span id="L253"><span class="lineNum">     253</span> <span class="tlaGNC">           6 :     sendCleanerCommand(mode);</span></span>
+<span id="L254"><span class="lineNum">     254</span> <span class="tlaGNC">           6 :     if (mode == CleanerMode::OFF) {</span></span>
+<span id="L255"><span class="lineNum">     255</span> <span class="tlaGNC">           3 :         boostTimer.removeTimer();</span></span>
 <span id="L256"><span class="lineNum">     256</span>              :     }</span>
-<span id="L257"><span class="lineNum">     257</span> <span class="tlaUNC">           0 :     if (mode == CleanerMode::UP) {</span></span>
-<span id="L258"><span class="lineNum">     258</span> <span class="tlaUNC">           0 :         boostTimer.setAlarmTimer();</span></span>
+<span id="L257"><span class="lineNum">     257</span> <span class="tlaGNC">           6 :     if (mode == CleanerMode::UP) {</span></span>
+<span id="L258"><span class="lineNum">     258</span> <span class="tlaGNC">           1 :         boostTimer.setAlarmTimer();</span></span>
 <span id="L259"><span class="lineNum">     259</span>              :     }</span>
 <span id="L260"><span class="lineNum">     260</span>              : }</span>
-<span id="L261"><span class="lineNum">     261</span> <span class="tlaUNC">           0 : void CleanerManager::sendCleanerCommand(CleanerMode mode) {</span></span>
-<span id="L262"><span class="lineNum">     262</span> <span class="tlaUNC">           0 :     std::string m = (mode == CleanerMode::OFF) ? &quot;OFF&quot; : (mode == CleanerMode::ON ? &quot;ON&quot; : &quot;UP&quot;);</span></span>
-<span id="L263"><span class="lineNum">     263</span> <span class="tlaUNC">           0 :     std::string cmd = &quot;{\&quot;type\&quot;: \&quot;SET_CONTROL\&quot;, \&quot;clean\&quot;: &quot; + std::string(mode != CleanerMode::OFF ? &quot;true&quot; : &quot;false&quot;) + &quot;, \&quot;mode\&quot;: \&quot;&quot; + m + &quot;\&quot;}&quot;;</span></span>
-<span id="L264"><span class="lineNum">     264</span> <span class="tlaUNC">           0 :     SimulatorBridge::getInstance().send_cmd(cmd);</span></span>
-<span id="L265"><span class="lineNum">     265</span> <span class="tlaUNC">           0 : }</span></span>
-<span id="L266"><span class="lineNum">     266</span> <span class="tlaUNC">           0 : bool CleanerManager::iscleanerOn() {</span></span>
-<span id="L267"><span class="lineNum">     267</span> <span class="tlaUNC">           0 :     return currentMode != CleanerMode::OFF;</span></span>
+<span id="L261"><span class="lineNum">     261</span> <span class="tlaGNC">           6 : void CleanerManager::sendCleanerCommand(CleanerMode mode) {</span></span>
+<span id="L262"><span class="lineNum">     262</span> <span class="tlaGNC">          12 :     std::string m = (mode == CleanerMode::OFF) ? &quot;OFF&quot; : (mode == CleanerMode::ON ? &quot;ON&quot; : &quot;UP&quot;);</span></span>
+<span id="L263"><span class="lineNum">     263</span> <span class="tlaGNC">           6 :     std::string cmd = &quot;{\&quot;type\&quot;: \&quot;SET_CONTROL\&quot;, \&quot;clean\&quot;: &quot; + std::string(mode != CleanerMode::OFF ? &quot;true&quot; : &quot;false&quot;) + &quot;, \&quot;mode\&quot;: \&quot;&quot; + m + &quot;\&quot;}&quot;;</span></span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaGNC">           6 :     SimulatorBridge::getInstance().send_cmd(cmd);</span></span>
+<span id="L265"><span class="lineNum">     265</span> <span class="tlaGNC">           6 : }</span></span>
+<span id="L266"><span class="lineNum">     266</span> <span class="tlaGNC">           3 : bool CleanerManager::iscleanerOn() {</span></span>
+<span id="L267"><span class="lineNum">     267</span> <span class="tlaGNC">           3 :     return currentMode != CleanerMode::OFF;</span></span>
 <span id="L268"><span class="lineNum">     268</span>              : }</span>
-<span id="L269"><span class="lineNum">     269</span> <span class="tlaUNC">           0 : bool CleanerManager::isBoosterOn() {</span></span>
+<span id="L269"><span class="lineNum">     269</span> <span class="tlaUNC tlaBgUNC">           0 : bool CleanerManager::isBoosterOn() {</span></span>
 <span id="L270"><span class="lineNum">     270</span> <span class="tlaUNC">           0 :     return currentMode == CleanerMode::UP;</span></span>
 <span id="L271"><span class="lineNum">     271</span>              : }</span>
 <span id="L272"><span class="lineNum">     272</span>              : </span>
