@@ -55,28 +55,26 @@ TEST_F(ControllerTest, TurnOff_CallsComponents) {
 
 // 3. 장애물 감지 시 회피 로직 호출 검증
 TEST_F(ControllerTest, avoidanceAction_TriggersAvoidance) {
-    // onOff를 true로 설정하여 루프 진입 가능하게 함 (protected 접근)
     struct TestController : public Controller {
-        using Controller::onOff;
         using Controller::Controller;
     };
     TestController* testCtrl = new TestController(mockDM, mockCM, mockDS, mockOS);
     testCtrl->onOff = true;
 
     // 전방 장애물 감지 시나리오
-    EXPECT_CALL(*mockOS, isFrontBlocked()).WillOnce(Return(true)).WillRepeatedly(Return(false));
     EXPECT_CALL(*mockDM, stopMotor()).Times(AtLeast(1));
     EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::OFF)).Times(AtLeast(1));
     EXPECT_CALL(*mockDM, avoidObstacle()).WillOnce(Return(Location::LEFT));
+
+    // 회피 후 정면 체크 (성공했다고 가정하여 false 리턴)
+    EXPECT_CALL(*mockOS, isFrontBlocked()).WillOnce(Return(false));
+
+    EXPECT_CALL(*mockOS, isRightBlocked()).WillOnce(Return(false));
     
     // 회피 성공 후 청소기를 다시 ON으로 돌리는 호출 추가
     EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::ON)).Times(AtLeast(1));
     
-    // 루프를 한 번 돌리고 빠져나오기 위해 별도 스레드에서 실행
-    std::thread t(&Controller::avoidanceAction, testCtrl);
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    testCtrl->onOff = false;
-    t.join();
+    testCtrl->avoidanceAction();
 
     delete testCtrl;
 }

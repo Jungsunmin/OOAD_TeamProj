@@ -140,8 +140,6 @@ protected:
     std::atomic<bool> isAlarmSigExist = false;
     std::atomic<bool> frontObstacleTriggered{false};
     std::thread dustThread;
-    std::thread obstacleThread;
-    std::mutex ctrlMutex;
     void boosterOverHandler();
 
 public:
