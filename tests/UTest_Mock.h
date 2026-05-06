@@ -28,6 +28,7 @@ class MockCleanerManager : public CleanerManager {
 public:
     MOCK_METHOD(void, cleanerMode, (CleanerMode), (override));
     MOCK_METHOD(bool, iscleanerOn, (), (override));
+    MOCK_METHOD(bool, isBoosterOn, (), (override));
     MOCK_METHOD(void, sendCleanerCommand, (CleanerMode), (override));
 };
 

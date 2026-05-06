@@ -182,8 +182,8 @@ TEST_F(ControllerTest, DustDetect_ExecutesAvoidanceActionOnTrigger) {
     testCtrl->setFrontTrigger(true); // 장애물 인터럽트 발생 가정
 
     // avoidanceAction()이 실행될 때 호출되어야 하는 함수들
-    EXPECT_CALL(*mockDM, stopMotor()).AtLeast(1);
-    EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::OFF)).AtLeast(1);
+    EXPECT_CALL(*mockDM, stopMotor()).Times(AtLeast(1));
+    EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::OFF)).Times(AtLeast(1));
     
     // 무한 루프 방지: avoidObstacle 호출 시 onOff를 false로 변경하여 루프 탈출
     EXPECT_CALL(*mockDM, avoidObstacle())
