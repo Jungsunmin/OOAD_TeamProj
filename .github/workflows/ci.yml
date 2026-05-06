@@ -43,20 +43,24 @@ jobs:
           # 1. ctest 실행 시 결과를 XML로 출력하도록 옵션(--output-junit) 추가
           ctest --test-dir build --output-on-failure --output-junit test-results.xml
 
-          #data collection
-          lcov --capture --directory build --output-file coverage.info --ignore-errors mismatch 
-          #exclude system and test files
+          # lcov 데이터 수집 (ignore-errors 옵션 강화)
+          lcov --capture --directory build --output-file coverage.info \
+            --ignore-errors mismatch,negative,unused
+
+          # 불필요한 파일 제거
           lcov --remove coverage.info \
             '/usr/*' \
             '${{ github.workspace }}/tests/*' \
             '*/_deps/*' \
             '*/build/*' \
             --output-file coverage.info \
-            --ignore-errors mismatch,unused 
-          #generate HTML report
-          genhtml coverage.info -o coverage_html 
-          #generate SonarQube XML report for source files only
-          gcovr --sonarqube coverage.xml --filter src/  
+            --ignore-errors mismatch,negative,unused
+
+          # HTML 리포트 생성
+          genhtml coverage.info -o coverage_html --ignore-errors source
+          
+          # SonarQube용 XML 생성
+          gcovr --sonarqube coverage.xml --filter src/ 
       
       # XML 결과를 읽어 GitHub에 리포트 생성
       - name: Publish Unit Test Results
