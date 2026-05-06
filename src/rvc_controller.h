@@ -131,7 +131,7 @@ private:
 
     std::atomic<bool> onOff{false};
     bool isAvoiding = false;
-    std::atomic<bool> isBoosterTimer = false;
+    std::atomic<bool> isAlarmSigExist = false;
     std::thread dustThread;
     std::thread obstacleThread;
     std::mutex ctrlMutex;

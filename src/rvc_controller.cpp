@@ -56,7 +56,7 @@ void Timer::setAlarmTimer() {
     struct itimerval timer_struct;
 
     timer_struct.it_value.tv_sec = 1;            // 1초
-    timer_struct.it_value.tv_usec = 0;       // 20000 마이크로초 (= 20ms)
+    timer_struct.it_value.tv_usec = 0;       // 0 마이크로초
 
     timer_struct.it_interval.tv_sec = 0;
     timer_struct.it_interval.tv_usec = 0;
@@ -141,6 +141,7 @@ bool ObstacleSensorInterface::isFrontBlocked() {
     SimulatorBridge::getInstance().send_cmd("{\"type\": \"GET_SENSORS\"}");
     std::this_thread::sleep_for(std::chrono::milliseconds(50)); // Small wait for response
     std::lock_guard<std::mutex> lock(sensorMutex);
+    //std::cout << last_front<< std::endl;
     return last_front <= threshold;
 }
 
@@ -218,12 +219,16 @@ Location DriveManager::avoidObstacle() {
         return turn;
     }
     else {
+        std::cout<<"trun backward start"<<std::endl;
         rotateBackward();
         return turn;
     }
     
 }
-void DriveManager::rotateForward() { sendDriveCommand(Driving::MOVEFORWARD); }
+void DriveManager::rotateForward() { 
+    std::cout<<"start moveforward"<<std::endl;
+    sendDriveCommand(Driving::MOVEFORWARD); 
+}
 void DriveManager::rotateLeft() { sendDriveCommand(Driving::TURNLEFT); }
 void DriveManager::rotateRight() { sendDriveCommand(Driving::TURNRIGHT); }
 void DriveManager::rotateBackward() { sendDriveCommand(Driving::MOVEBACKWARD); }
@@ -243,7 +248,7 @@ void DriveManager::rotateRightb() {
 // --- CleanerManager ---
 CleanerManager::CleanerManager() : currentMode(CleanerMode::OFF), boostTimer(3000) {}
 void CleanerManager::cleanerMode(CleanerMode mode) {
-    if (currentMode == mode) return;
+    if (currentMode == mode && mode != CleanerMode::UP) return;
     currentMode = mode;
     sendCleanerCommand(mode);
     if (mode == CleanerMode::OFF) {
@@ -288,15 +293,20 @@ void Controller::avoidanceLoop() {
             {
                 std::lock_guard<std::mutex> lock(ctrlMutex);
                 isAvoiding = true;
+
+                driveManager->stopMotor();
+                std::cout<<"front sensor interrupt"<<std::endl;
+                usleep(1000);
             }
             
 
             std::cout << "[System] Obstacle Detected! Starting Avoidance..." << std::endl;
-            this->isBoosterTimer.store(false);
             cleanerManager->cleanerMode(CleanerMode::OFF);
             
             Location turnLocation = driveManager->avoidObstacle();
             
+            
+            this->isAlarmSigExist.store(false); //혹시라도 removeTimer 하기 직전에 시그널을 받았을 경우
             if (turnLocation == Location::LEFT) {
                 
                 if (obstacleSensorInterface->isRightBlocked()) {
@@ -316,18 +326,19 @@ void Controller::avoidanceLoop() {
                 while(onOff) {
                     obstacleSensorInterface->isFrontBlocked(); 
                     if (!obstacleSensorInterface->isLeftBlocked()){
-                        std::this_thread::sleep_for(std::chrono::milliseconds(700));
+                        std::this_thread::sleep_for(std::chrono::milliseconds(500));
                         driveManager->rotateLeftb();
                         break;
                     }
                     else if (!obstacleSensorInterface->isRightBlocked()){
-                        std::this_thread::sleep_for(std::chrono::milliseconds(700));
+                        std::this_thread::sleep_for(std::chrono::milliseconds(500));
                         driveManager->rotateRightb();
                         break;
                     }
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 }
                 cleanerManager->cleanerMode(CleanerMode::ON);
+                printf("asdf");
             }
 
             {
@@ -340,17 +351,15 @@ void Controller::avoidanceLoop() {
 }
 
 void Controller::boosterOverHandler() {
-    {
-    std::lock_guard<std::mutex> lock(ctrlMutex);
-    this->isBoosterTimer.store(false);
-    }
+    this->isAlarmSigExist.store(true);
 }
 
 void Controller::dustDetect() {
     while(onOff) {
+        
         bool canCheck = false;
         {
-            std::lock_guard<std::mutex> lock(timerMutex);
+            std::lock_guard<std::mutex> lock(ctrlMutex);
             if (!isAvoiding && cleanerManager->iscleanerOn()) {
                 canCheck = true;
             }
@@ -358,15 +367,15 @@ void Controller::dustDetect() {
 
 
         if (canCheck) {
-            if (!(this->isBoosterTimer.load()) && cleanerManager->isBoosterOn() ) {
+            if (this->isAlarmSigExist.load() && cleanerManager->isBoosterOn() ) {
                 cleanerManager->cleanerMode(CleanerMode::ON);  //타이머가 종료했는데, 부스터 모드일 경우
-                //this->isBoosterTimer.store(false);
+                this->isAlarmSigExist.store(false);
             }
-            std::lock_guard<std::mutex> lock(timerMutex);
+            
             if (obstacleSensorInterface->isDustExistence()) {
-                
+
+                std::lock_guard<std::mutex> lock(ctrlMutex);
                 if (!isAvoiding && onOff) {
-                    this->isBoosterTimer.store(true);
                     if(cleanerManager->isBoosterOn() == true) {
                         cleanerManager->cleanerMode(CleanerMode::UP);
                         //continue;    //대기 스래드를 또 만들지 않음
@@ -396,7 +405,7 @@ void Controller::dustDetect() {
             }
         }
         
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
 
