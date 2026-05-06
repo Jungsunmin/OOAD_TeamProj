@@ -2,10 +2,16 @@
 #include <thread>
 #include <chrono>
 #include "rvc_controller.h"
+#include <csignal>
 
 int main() {
     std::cout << "RVC Software System Starting..." << std::endl;
     std::cout << "Connecting to Simulator on localhost:12345..." << std::endl;
+
+    sigset_t my_sigset;
+    sigemptyset(&my_sigset);
+    sigaddset(&my_sigset, SIGALRM);
+    pthread_sigmask(SIG_BLOCK, &my_sigset, nullptr);
 
     // 1. Initialize Boundary Interfaces
     ObstacleSensorInterface osi;
