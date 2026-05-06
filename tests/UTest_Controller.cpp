@@ -59,7 +59,6 @@ TEST_F(ControllerTest, avoidanceAction_TriggersAvoidance) {
         using Controller::Controller;
     };
     TestController* testCtrl = new TestController(mockDM, mockCM, mockDS, mockOS);
-    testCtrl->onOff = true;
 
     // 전방 장애물 감지 시나리오
     EXPECT_CALL(*mockDM, stopMotor()).Times(AtLeast(1));
