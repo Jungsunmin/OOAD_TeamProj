@@ -280,7 +280,6 @@ Controller::Controller(DriveManager* d, CleanerManager* c, DustSensorInterface* 
 Controller::~Controller() { 
     onOff = false; 
     if (dustThread.joinable()) dustThread.join(); 
-    //if (obstacleThread.joinable()) obstacleThread.join();
 }
 
 void Controller::interruptHandler() {
@@ -360,34 +359,30 @@ void Controller::dustDetect() {
             this->isAlarmSigExist.store(false);
         }
         
-        if (obstacleSensorInterface->isDustExistence()) {
+        if (obstacleSensorInterface->isDustExistence() && onOff) {
+            if(cleanerManager->isBoosterOn() == true) {
+                cleanerManager->cleanerMode(CleanerMode::UP);
+            } else {
+            
+                cleanerManager->cleanerMode(CleanerMode::UP);
+                std::thread([this]() {
+                    int caught_signal;
 
-            if (onOff) {
-                if(cleanerManager->isBoosterOn() == true) {
-                    cleanerManager->cleanerMode(CleanerMode::UP);
-                    //continue;    //대기 스래드를 또 만들지 않음
-                } else {
-                
-                    cleanerManager->cleanerMode(CleanerMode::UP);
-                    std::thread([this]() {
-                        int caught_signal;
+                    sigset_t wait_set;
+                    sigemptyset(&wait_set);
+                    sigaddset(&wait_set, SIGALRM);
+                    
+                    std::cout << "Waiting for SIGALRM" << std::endl;
+                    // 스레드가 여기서 대기
+                    sigwait(&wait_set, &caught_signal);
 
-                        sigset_t wait_set;
-                        sigemptyset(&wait_set);
-                        sigaddset(&wait_set, SIGALRM);
-                        
-                        std::cout << "Waiting for SIGALRM" << std::endl;
-                        // 스레드가 여기서 대기
-                        sigwait(&wait_set, &caught_signal);
-
-                        // 시그널이 도착하면 아래 로직 실행
-                        if (caught_signal == SIGALRM) {
-                            std::cout << "[Wait-Thread] SIGALRM Caught! Routing to Controller..." << std::endl;
-                            this->boosterOverHandler();
-                        }
-                        
-                    }).detach();
-                }
+                    // 시그널이 도착하면 아래 로직 실행
+                    if (caught_signal == SIGALRM) {
+                        std::cout << "[Wait-Thread] SIGALRM Caught! Routing to Controller..." << std::endl;
+                        this->boosterOverHandler();
+                    }
+                    
+                }).detach();
             }
         }
         
@@ -409,9 +404,6 @@ void Controller::turnOn() {
     
     if (dustThread.joinable()) dustThread.join();
     dustThread = std::thread(&Controller::dustDetect, this);
-
-    // if (obstacleThread.joinable()) obstacleThread.join();
-    // obstacleThread = std::thread(&Controller::avoidanceLoop, this);
 }
 
 void Controller::turnOff() {
@@ -420,7 +412,6 @@ void Controller::turnOff() {
     onOff = false;
     
     if (dustThread.joinable()) dustThread.join();
-    //if (obstacleThread.joinable()) obstacleThread.join();
     
 
     cleanerManager->cleanerMode(CleanerMode::OFF);
