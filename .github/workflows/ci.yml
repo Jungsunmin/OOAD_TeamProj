@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "main", "develop", "feature/*", "Sun", "bug_fix" ]
+    #branches: [ "main", "develop", "feature/*", "Sun", "bug_fix" ]
   pull_request:
 
 jobs:
@@ -40,22 +40,34 @@ jobs:
 
       - name: Test
         run: |
-          ctest --test-dir build --output-on-failure
+          # 1. ctest 실행 시 결과를 XML로 출력하도록 옵션(--output-junit) 추가
+          ctest --test-dir build --output-on-failure --output-junit test-results.xml
 
-          #data collection
-          lcov --capture --directory build --output-file coverage.info --ignore-errors mismatch 
-          #exclude system and test files
+          # lcov 데이터 수집 (ignore-errors 옵션 강화)
+          lcov --capture --directory build --output-file coverage.info \
+            --ignore-errors mismatch,negative,unused
+
+          # 불필요한 파일 제거
           lcov --remove coverage.info \
             '/usr/*' \
             '${{ github.workspace }}/tests/*' \
             '*/_deps/*' \
             '*/build/*' \
             --output-file coverage.info \
-            --ignore-errors mismatch,unused 
-          #generate HTML report
-          genhtml coverage.info -o coverage_html 
-          #generate SonarQube XML report for source files only
-          gcovr --sonarqube coverage.xml --filter src/  
+            --ignore-errors mismatch,negative,unused
+
+          # HTML 리포트 생성
+          genhtml coverage.info -o coverage_html --ignore-errors source
+          
+          # SonarQube용 XML 생성
+          gcovr --sonarqube coverage.xml --filter src/ 
+      
+      # XML 결과를 읽어 GitHub에 리포트 생성
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always() # 테스트가 실패해도 리포트를 생성하도록 always() 조건 부여
+        with:
+          files: build/test-results.xml
 
 
       - name: Static Analysis - cppcheck
