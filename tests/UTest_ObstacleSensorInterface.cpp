@@ -31,6 +31,7 @@ protected:
 
     void TearDown() override {
         delete osi;
+        delete mockOBS;
     }
 };
 
