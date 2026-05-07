@@ -23,7 +23,7 @@ int main() {
 
     ObstacleSensorInterface osi; //여기가 문제였음. 일단 obsSI로 바꿈.
     
-    PathPlanner planner(&o브si);
+    PathPlanner planner(&osi);
     DriveManager driver(&planner);
     CleanerManager cleaner;
     
