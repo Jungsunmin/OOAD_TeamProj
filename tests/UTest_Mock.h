@@ -28,6 +28,7 @@ class MockCleanerManager : public CleanerManager {
 public:
     MOCK_METHOD(void, cleanerMode, (CleanerMode), (override));
     MOCK_METHOD(bool, iscleanerOn, (), (override));
+    MOCK_METHOD(bool, isBoosterOn, (), (override));
     MOCK_METHOD(void, sendCleanerCommand, (CleanerMode), (override));
 };
 
@@ -55,7 +56,7 @@ public:
     MOCK_METHOD(void, turnOff, (), (override));
     MOCK_METHOD(void, errorturnOff, (), (override));
     MOCK_METHOD(void, dustDetect, (), (override));
-    MOCK_METHOD(void, avoidanceLoop, (), (override));
+    MOCK_METHOD(void, avoidanceAction, (), (override));
 };
 
 #endif //RVC_SW_CONTROLLER_UTEST_MOCK_H
