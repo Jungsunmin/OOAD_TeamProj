@@ -205,6 +205,7 @@ Location DriveManager::avoidObstacle() {
     stopMotor();
     Location turn = pathPlanner->decisionPath();
     if (turn == Location::LEFT) {
+        std::cout << "[System] Left side cleared! Escaping to Left." << std::endl;
         rotateLeft();
         turnTimer.setTimer();
         stopMotor();
@@ -212,6 +213,7 @@ Location DriveManager::avoidObstacle() {
         return turn;
     }
     else if (turn == Location::RIGHT) {
+        std::cout << "[System] Right side cleared! Escaping to Right." << std::endl;
         rotateRight();
         turnTimer.setTimer();
         stopMotor();
@@ -324,14 +326,17 @@ void Controller::avoidanceAction() {
             cleanerManager->cleanerMode(CleanerMode::ON);
         }
     } else {
+        std::cout << "[System] Rear blocked path - Searching for exit..." << std::endl;
         while(onOff) {
             obstacleSensorInterface->isFrontBlocked(); 
             if (!obstacleSensorInterface->isLeftBlocked()){
+                std::cout << "[System] Left side cleared! Escaping to Left." << std::endl;
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 driveManager->rotateLeftb();
                 break;
             }
             else if (!obstacleSensorInterface->isRightBlocked()){
+                std::cout << "[System] Right side cleared! Escaping to Right." << std::endl;
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 driveManager->rotateRightb();
                 break;
@@ -339,7 +344,6 @@ void Controller::avoidanceAction() {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
         cleanerManager->cleanerMode(CleanerMode::ON);
-        printf("asdf");
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
