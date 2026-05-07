@@ -86,7 +86,7 @@ ObstacleSensorInterface::ObstacleSensorInterface() : running(true) {
 }
 ObstacleSensorInterface::~ObstacleSensorInterface() {
     running = false;
-    if (listenerThread.joinable()) listenerThread.join();
+    if (listenerThread.joinable() && listenerThread.get_id() != std::this_thread::get_id()) listenerThread.join();
 }
 void ObstacleSensorInterface::attachInterrupt(std::function<void()> cb) { onEmergency = cb; }
 
@@ -279,8 +279,8 @@ Controller::Controller(DriveManager* d, CleanerManager* c, DustSensorInterface* 
 
 Controller::~Controller() { 
     onOff = false; 
-    if (dustThread.joinable()) dustThread.join(); 
-    if (obstacleThread.joinable()) obstacleThread.join();
+    if (dustThread.joinable() && dustThread.get_id() != std::this_thread::get_id()) dustThread.join(); 
+    if (obstacleThread.joinable() && obstacleThread.get_id() != std::this_thread::get_id()) obstacleThread.join();
 }
 
 void Controller::interruptHandler() {
@@ -311,14 +311,14 @@ void Controller::avoidanceLoop() {
                 
                 if (obstacleSensorInterface->isRightBlocked()) {
                     errorturnOff();
-                    cleanerManager->cleanerMode(CleanerMode::ON);   //계속 이쪽코드에서 비정상적으로 종료됨, 일단 errorturnOff 무시
+                    //cleanerManager->cleanerMode(CleanerMode::ON);   //계속 이쪽코드에서 비정상적으로 종료됨, 일단 errorturnOff 무시
                 } else {
                     cleanerManager->cleanerMode(CleanerMode::ON);
                 }
             } else if (turnLocation == Location::RIGHT) {
                 if (obstacleSensorInterface->isLeftBlocked()) {
                     errorturnOff();
-                    cleanerManager->cleanerMode(CleanerMode::ON);
+                    //cleanerManager->cleanerMode(CleanerMode::ON);
                 } else {
                     cleanerManager->cleanerMode(CleanerMode::ON);
                 }
@@ -416,10 +416,10 @@ void Controller::turnOn() {
     cleanerManager->cleanerMode(CleanerMode::ON);
     driveManager->rotateForward();
     
-    if (dustThread.joinable()) dustThread.join();
+    if (dustThread.joinable() && dustThread.get_id() != std::this_thread::get_id()) dustThread.join();
     dustThread = std::thread(&Controller::dustDetect, this);
 
-    if (obstacleThread.joinable()) obstacleThread.join();
+    if (obstacleThread.joinable() && obstacleThread.get_id() != std::this_thread::get_id()) obstacleThread.join();
     obstacleThread = std::thread(&Controller::avoidanceLoop, this);
 }
 
@@ -428,16 +428,16 @@ void Controller::turnOff() {
     std::cout << "[System] POWER OFF" << std::endl;
     onOff = false;
     
-    if (dustThread.joinable()) dustThread.join();
-    if (obstacleThread.joinable()) obstacleThread.join();
+    if (dustThread.joinable() && dustThread.get_id() != std::this_thread::get_id()) dustThread.join();
+    if (obstacleThread.joinable() && obstacleThread.get_id() != std::this_thread::get_id()) obstacleThread.join();
     
 
     cleanerManager->cleanerMode(CleanerMode::OFF);
     driveManager->stopMotor();
 }
 
-void Controller::errorturnOff() { 
-    //turnOff(); 
+void Controller::errorturnOff() {
+    turnOff(); 
 }
 
 // --- ButtonInterface ---
