@@ -21,7 +21,7 @@ int main() {
         return -1;
     }
 
-    ObstacleSensorInterface osi;
+    SensorInterface osi;
     
     PathPlanner planner(&osi);
     DriveManager driver(&planner);
