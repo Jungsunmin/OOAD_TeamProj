@@ -270,7 +270,7 @@ bool CleanerManager::isBoosterOn() {
     return currentMode == CleanerMode::UP;
 }
 
-// --- Controller ---
+// --- Controller ---/
 Controller::Controller(DriveManager* d, CleanerManager* c, DustSensorInterface* ds, ObstacleSensorInterface* os)
     : driveManager(d), cleanerManager(c), dustSensorInterface(ds), obstacleSensorInterface(os) {
     obstacleSensorInterface->attachInterrupt([this](){ this->interruptHandler(); });
