@@ -6,23 +6,23 @@
 
 using namespace testing;
 
+//// 장애물 센서 인터페이스 관련 삭제함.
 class ControllerTest : public ::testing::Test {
 protected:
     NiceMock<MockDriveManager>* mockDM;
     NiceMock<MockCleanerManager>* mockCM;
-    NiceMock<MockDustSensorInterface>* mockDS;
+
     NiceMock<MockObstacleSensorInterface>* mockOS;
     NiceMock<MockPathPlanner>* mockPP;
     Controller* controller;
 
     void SetUp() override {
         mockOS = new NiceMock<MockObstacleSensorInterface>();
-        mockDS = new NiceMock<MockDustSensorInterface>();
         mockCM = new NiceMock<MockCleanerManager>();
         mockPP = new NiceMock<MockPathPlanner>(mockOS);
         mockDM = new NiceMock<MockDriveManager>(mockPP);
         
-        controller = new Controller(mockDM, mockCM, mockDS, mockOS);
+        controller = new Controller(mockDM, mockCM, mockOS);
     }
 
     void TearDown() override {
@@ -30,7 +30,6 @@ protected:
         delete mockDM;
         delete mockPP;
         delete mockCM;
-        delete mockDS;
         delete mockOS;
     }
 };
@@ -58,7 +57,7 @@ TEST_F(ControllerTest, avoidanceAction_TriggersAvoidance) {
     struct TestController : public Controller {
         using Controller::Controller;
     };
-    TestController* testCtrl = new TestController(mockDM, mockCM, mockDS, mockOS);
+    TestController* testCtrl = new TestController(mockDM, mockCM, mockOS);
 
     // 전방 장애물 감지 시나리오
     EXPECT_CALL(*mockDM, stopMotor()).Times(AtLeast(1));
