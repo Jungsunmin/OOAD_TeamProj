@@ -310,14 +310,14 @@ void Controller::avoidanceAction() {
     this->isAlarmSigExist.store(false); //혹시라도 removeTimer 하기 직전에 시그널을 받았을 경우
     if (turnLocation == Location::LEFT) {
         
-        if (obstacleSensorInterface->isRightBlocked()) {
+        if (!obstacleSensorInterface->isRightBlocked()) {
             errorturnOff();
             //cleanerManager->cleanerMode(CleanerMode::ON);   //계속 이쪽코드에서 비정상적으로 종료됨, 일단 errorturnOff 무시
         } else {
             cleanerManager->cleanerMode(CleanerMode::ON);
         }
     } else if (turnLocation == Location::RIGHT) {
-        if (obstacleSensorInterface->isLeftBlocked()) {
+        if (!obstacleSensorInterface->isLeftBlocked()) {
             errorturnOff();
             //cleanerManager->cleanerMode(CleanerMode::ON);
         } else {
@@ -327,12 +327,12 @@ void Controller::avoidanceAction() {
         while(onOff) {
             obstacleSensorInterface->isFrontBlocked(); 
             if (!obstacleSensorInterface->isLeftBlocked()){
-                // std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 driveManager->rotateLeftb();
                 break;
             }
             else if (!obstacleSensorInterface->isRightBlocked()){
-                // std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 driveManager->rotateRightb();
                 break;
             }
