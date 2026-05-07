@@ -16,6 +16,8 @@ public:
     MOCK_METHOD(void, rotateRight, (), (override));
     MOCK_METHOD(void, rotateBackward, (), (override));
     MOCK_METHOD(void, stopMotor, (), (override));
+    MOCK_METHOD(void, rotateLeftb, (), (override));
+    MOCK_METHOD(void, rotateRightb, (), (override));
 };
 
 class MockPathPlanner : public PathPlanner {
