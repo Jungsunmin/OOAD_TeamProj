@@ -20,7 +20,7 @@ MAX_VAL = 127
 RVC_RADIUS = 0.3
 LINEAR_SPEED = 1.0
 ANGULAR_SPEED = math.radians(90)
-INTERRUPT_THRESHOLD = 10 
+INTERRUPT_THRESHOLD = 20 
 FRONT_SENSOR_DRAW_LENGTH = 1.5
 SIDE_SENSOR_DRAW_LENGTH = 1.5
 SIDE_SENSOR_FORWARD_OFFSET = 0.5
@@ -99,6 +99,9 @@ class RVCSimulator:
             is_blocked = (sensors['front'] <= INTERRUPT_THRESHOLD)
             if is_blocked and not self.prev_front_blocked:
                 trigger_interrupt = True
+                print(f"[Simulator] INTERRUPT Triggered! Distance: {sensors['front']}")
+            
+            # 상태 업데이트 (다음 프레임을 위해)
             self.prev_front_blocked = is_blocked
 
             if self.cleaning:
@@ -109,6 +112,7 @@ class RVCSimulator:
         
         if trigger_interrupt:
             self.broadcast_event({"type": "INTERRUPT", "source": "FRONT_SENSOR"})
+            print("front sensor inerrupt occured")
 
     def get_sensor_data_internal(self):
         def raycast_all(ray_angle, origin_x=None, origin_y=None):
