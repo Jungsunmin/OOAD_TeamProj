@@ -13,7 +13,6 @@
 
 // --- Forward Declarations ---
 class SensorInterface;
-class DustSensorInterface;
 class PathPlanner;
 class DriveManager;
 class CleanerManager;
@@ -58,11 +57,6 @@ public:
     virtual bool isDustExistence();
 };
 
-class DustSensorInterface {
-public:
-    virtual ~DustSensorInterface() = default;
-    virtual bool isDustExistence();
-};
 
 class PathPlanner {
 private:
@@ -112,7 +106,6 @@ class Controller {
 protected:
     DriveManager* driveManager;
     CleanerManager* cleanerManager;
-    DustSensorInterface* dustSensorInterface;
     SensorInterface* sensorInterface;
 
     std::atomic<bool> onOff{false};
