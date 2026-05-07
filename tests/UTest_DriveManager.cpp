@@ -55,8 +55,20 @@ TEST_F(DriveManagerTest, AvoidObstacle_LogicTest) {
     EXPECT_EQ(driveManager->getCurrentState(), Driving::MOVEFORWARD);
 }
 
+//2-2. 회피 로직 중 우회전 상태 테스트
+TEST_F(DriveManagerTest, DriveManagerTest_AvoidObstacle_LogicTest_Right) {    // PathPlanner가 오른쪽으로 가라고 명령할 것임을 설정
+    EXPECT_CALL(*mockPP, decisionPath()).WillOnce(Return(Location::RIGHT));
+    Location result = driveManager->avoidObstacle();    EXPECT_EQ(result, Location::RIGHT);    // 회피 후 다시 전진 상태로 복구되었는지 확인
+    EXPECT_EQ(driveManager->getCurrentState(), Driving::MOVEFORWARD);
+}
 // 3. 특수 회전 로직 테스트
 TEST_F(DriveManagerTest, RotateRightb_ExecutionTest) {
     driveManager->rotateRightb();
+    EXPECT_EQ(driveManager->getCurrentState(), Driving::MOVEFORWARD);
+}
+
+//3-2. 후진 후 회전. 좌회전 방향
+TEST_F(DriveManagerTest, RotateLeftb_ExecutionTest) {
+    driveManager->rotateLeftb();
     EXPECT_EQ(driveManager->getCurrentState(), Driving::MOVEFORWARD);
 }
