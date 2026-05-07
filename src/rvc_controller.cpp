@@ -49,7 +49,7 @@ ObstacleSensorInterface::ObstacleSensorInterface() {}
 ObstacleSensorInterface::~ObstacleSensorInterface() {}
 
 bool ObstacleSensorInterface::isFrontBlocked() {
-    // 💡 팁: 통신 요청, 딜레이(sleep), 뮤텍스 락은 모두 Simulator 내부에 숨겨져 있습니다.
+    // 팁: 통신 요청, 딜레이(sleep), 뮤텍스 락은 모두 Simulator 내부에 숨겨져 있습니다.
     return Simulator::getSensorData().front <= threshold;
 }
 
@@ -66,11 +66,11 @@ bool ObstacleSensorInterface::isDustExistence() {
 }
 
 // (참고: 만약 isObstacleExist() 함수가 있다면 아래처럼 작성하시면 됩니다)
-ObstacleStatus ObstacleSensorInterface::isObstacleExist() {
-    SensorData data = Simulator::getSensorData();
-    return {data.front <= threshold, data.left <= thresholdside, data.right <= thresholdside};
-}
-
+// ObstacleStatus ObstacleSensorInterface::isObstacleExist() {
+//     SensorData data = Simulator::getSensorData();
+//     return {data.front <= threshold, data.left <= thresholdside, data.right <= thresholdside};
+// }
+////삭제함
 
 // --- PathPlanner ---
 PathPlanner::PathPlanner(ObstacleSensorInterface* o) : osi(o) {}
@@ -80,7 +80,8 @@ Location PathPlanner::decisionPath() {
         else return Location::RIGHT;
     } else return Location::LEFT;
 
-    return Location::LEFT; 
+    //return Location::LEFT;
+    ////코드스멜. 안쓰이는 부분
 }
 
 // --- DriveManager ---
@@ -113,17 +114,31 @@ Location DriveManager::avoidObstacle() {
 }
 void DriveManager::rotateForward() { 
     std::cout<<"start moveforward"<<std::endl;
-    Simulator::sendDriveCommand(Driving::MOVEFORWARD); 
+    Simulator::sendDriveCommand(Driving::MOVEFORWARD);
+    currentDriveState = Driving::MOVEFORWARD; // 이 부분이 누락 //테스트 전용
 }
-void DriveManager::rotateLeft() { Simulator::sendDriveCommand(Driving::TURNLEFT); }
-void DriveManager::rotateRight() { Simulator::sendDriveCommand(Driving::TURNRIGHT); }
-void DriveManager::rotateBackward() { Simulator::sendDriveCommand(Driving::MOVEBACKWARD); }
-void DriveManager::stopMotor() { Simulator::sendDriveCommand(Driving::STOP); }
+void DriveManager::rotateLeft() {
+    Simulator::sendDriveCommand(Driving::TURNLEFT);
+    currentDriveState = Driving::TURNLEFT;
+}
+void DriveManager::rotateRight() {
+    Simulator::sendDriveCommand(Driving::TURNRIGHT);
+    currentDriveState = Driving::TURNRIGHT;
+}
+void DriveManager::rotateBackward() {
+    Simulator::sendDriveCommand(Driving::MOVEBACKWARD);
+    currentDriveState = Driving::MOVEBACKWARD;
+}
+void DriveManager::stopMotor() {
+    Simulator::sendDriveCommand(Driving::STOP);
+    currentDriveState = Driving::STOP;
+}
 void DriveManager::rotateLeftb() {
     Simulator::sendDriveCommand(Driving::TURNLEFT);
     turnTimer.setTimer();
     stopMotor();
     rotateForward();
+    //should change
  }
 void DriveManager::rotateRightb() { 
     Simulator::sendDriveCommand(Driving::TURNRIGHT);
@@ -133,6 +148,8 @@ void DriveManager::rotateRightb() {
 }
 // --- CleanerManager ---
 CleanerManager::CleanerManager() : currentMode(CleanerMode::OFF), boostTimer(3000) {}
+
+//getCurrentMode() ->header file.
 void CleanerManager::cleanerMode(CleanerMode mode) {
     if (currentMode == mode && mode != CleanerMode::UP) return;
     currentMode = mode;

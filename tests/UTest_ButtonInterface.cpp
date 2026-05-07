@@ -8,9 +8,10 @@ using namespace testing;
 
 class ButtonInterfaceTest : public ::testing::Test {
 protected:
+    //먼지센서인터페이스 삭제.
     MockDriveManager* mockDM;
     MockCleanerManager* mockCM;
-    MockDustSensorInterface* mockDS;
+    //MockDustSensorInterface* mockDS;
     MockObstacleSensorInterface* mockOS;
     MockPathPlanner* mockPP;
     MockController* mockController;
@@ -18,11 +19,11 @@ protected:
 
     void SetUp() override {
         mockOS = new NiceMock<MockObstacleSensorInterface>();
-        mockDS = new NiceMock<MockDustSensorInterface>();
+        //mockDS = new NiceMock<MockDustSensorInterface>();
         mockCM = new NiceMock<MockCleanerManager>();
         mockPP = new NiceMock<MockPathPlanner>(mockOS);
         mockDM = new NiceMock<MockDriveManager>(mockPP);
-        mockController = new NiceMock<MockController>(mockDM, mockCM, mockDS, mockOS);
+        mockController = new NiceMock<MockController>(mockDM, mockCM, mockOS);
         button = new ButtonInterface(mockController);
     }
 
@@ -32,7 +33,7 @@ protected:
         delete mockDM;
         delete mockPP;
         delete mockCM;
-        delete mockDS;
+        //delete mockDS;
         delete mockOS;
     }
 };

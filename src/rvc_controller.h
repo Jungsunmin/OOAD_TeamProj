@@ -13,7 +13,7 @@
 
 // --- Forward Declarations ---
 class ObstacleSensorInterface;
-class DustSensorInterface;
+
 class PathPlanner;
 class DriveManager;
 class CleanerManager;
@@ -54,15 +54,16 @@ public:
     virtual bool isFrontBlocked();
     virtual bool isLeftBlocked();
     virtual bool isRightBlocked();
-    virtual ObstacleStatus isObstacleExist();
+    // virtual ObstacleStatus isObstacleExist();
+    /// ObstacleStatus 삭제됨
     virtual bool isDustExistence();
 };
 
-class DustSensorInterface {
-public:
-    virtual ~DustSensorInterface() = default;
-    virtual bool isDustExistence();
-};
+// class DustSensorInterface {
+// public:
+//     virtual ~DustSensorInterface() = default;
+//     virtual bool isDustExistence();
+// };
 
 class PathPlanner {
 private:
@@ -112,7 +113,7 @@ class Controller {
 protected:
     DriveManager* driveManager;
     CleanerManager* cleanerManager;
-    DustSensorInterface* dustSensorInterface;
+    //DustSensorInterface* dustSensorInterface;
     ObstacleSensorInterface* obstacleSensorInterface;
 
     std::atomic<bool> onOff{false};
