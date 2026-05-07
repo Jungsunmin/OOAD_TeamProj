@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-05-07 08:38:40</td>
+            <td class="headerValue">2026-05-07 08:45:35</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryLo">45.5&nbsp;%</td>
@@ -100,19 +100,19 @@
 <span id="L38"><span class="lineNum">      38</span> <span class="tlaUNC">           0 :     }</span></span>
 <span id="L39"><span class="lineNum">      39</span>              : </span>
 <span id="L40"><span class="lineNum">      40</span>              :     // --- 소켓 연결 관리 (기존 SimulatorBridge::get_sock) ---</span>
-<span id="L41"><span class="lineNum">      41</span> <span class="tlaGNC tlaBgGNC">          18 :     int get_sock() {</span></span>
-<span id="L42"><span class="lineNum">      42</span> <span class="tlaGNC">          18 :         std::lock_guard&lt;std::mutex&gt; lock(sock_mtx);</span></span>
-<span id="L43"><span class="lineNum">      43</span> <span class="tlaGNC">          18 :         if (sock != -1) return sock; // 이미 연결되어 있으면 그대로 반환</span></span>
+<span id="L41"><span class="lineNum">      41</span> <span class="tlaGNC tlaBgGNC">          25 :     int get_sock() {</span></span>
+<span id="L42"><span class="lineNum">      42</span> <span class="tlaGNC">          25 :         std::lock_guard&lt;std::mutex&gt; lock(sock_mtx);</span></span>
+<span id="L43"><span class="lineNum">      43</span> <span class="tlaGNC">          25 :         if (sock != -1) return sock; // 이미 연결되어 있으면 그대로 반환</span></span>
 <span id="L44"><span class="lineNum">      44</span>              :         </span>
-<span id="L45"><span class="lineNum">      45</span> <span class="tlaGNC">          18 :         sock = socket(AF_INET, SOCK_STREAM, 0);</span></span>
+<span id="L45"><span class="lineNum">      45</span> <span class="tlaGNC">          25 :         sock = socket(AF_INET, SOCK_STREAM, 0);</span></span>
 <span id="L46"><span class="lineNum">      46</span>              :         struct sockaddr_in addr;</span>
-<span id="L47"><span class="lineNum">      47</span> <span class="tlaGNC">          18 :         addr.sin_family = AF_INET;</span></span>
-<span id="L48"><span class="lineNum">      48</span> <span class="tlaGNC">          18 :         addr.sin_port = htons(12345);</span></span>
-<span id="L49"><span class="lineNum">      49</span> <span class="tlaGNC">          18 :         inet_pton(AF_INET, &quot;127.0.0.1&quot;, &amp;addr.sin_addr);</span></span>
+<span id="L47"><span class="lineNum">      47</span> <span class="tlaGNC">          25 :         addr.sin_family = AF_INET;</span></span>
+<span id="L48"><span class="lineNum">      48</span> <span class="tlaGNC">          25 :         addr.sin_port = htons(12345);</span></span>
+<span id="L49"><span class="lineNum">      49</span> <span class="tlaGNC">          25 :         inet_pton(AF_INET, &quot;127.0.0.1&quot;, &amp;addr.sin_addr);</span></span>
 <span id="L50"><span class="lineNum">      50</span>              :         </span>
-<span id="L51"><span class="lineNum">      51</span> <span class="tlaGNC">          18 :         if (connect(sock, (struct sockaddr*)&amp;addr, sizeof(addr)) &lt; 0) { </span></span>
-<span id="L52"><span class="lineNum">      52</span> <span class="tlaGNC">          18 :             close(sock); </span></span>
-<span id="L53"><span class="lineNum">      53</span> <span class="tlaGNC">          18 :             sock = -1; </span></span>
+<span id="L51"><span class="lineNum">      51</span> <span class="tlaGNC">          25 :         if (connect(sock, (struct sockaddr*)&amp;addr, sizeof(addr)) &lt; 0) { </span></span>
+<span id="L52"><span class="lineNum">      52</span> <span class="tlaGNC">          25 :             close(sock); </span></span>
+<span id="L53"><span class="lineNum">      53</span> <span class="tlaGNC">          25 :             sock = -1; </span></span>
 <span id="L54"><span class="lineNum">      54</span>              :         } else {</span>
 <span id="L55"><span class="lineNum">      55</span>              :             // 💡 [버그 픽스] 소켓 타임아웃 설정 추가 (데이터가 없어도 0.1초 뒤에 recv가 풀림)</span>
 <span id="L56"><span class="lineNum">      56</span>              :             struct timeval tv;</span>
@@ -120,16 +120,16 @@
 <span id="L58"><span class="lineNum">      58</span> <span class="tlaUNC">           0 :             tv.tv_usec = 100000; // 100ms</span></span>
 <span id="L59"><span class="lineNum">      59</span> <span class="tlaUNC">           0 :             setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&amp;tv, sizeof tv);</span></span>
 <span id="L60"><span class="lineNum">      60</span>              :         }</span>
-<span id="L61"><span class="lineNum">      61</span> <span class="tlaGNC tlaBgGNC">          18 :         return sock;</span></span>
-<span id="L62"><span class="lineNum">      62</span> <span class="tlaGNC">          18 :     }</span></span>
+<span id="L61"><span class="lineNum">      61</span> <span class="tlaGNC tlaBgGNC">          25 :         return sock;</span></span>
+<span id="L62"><span class="lineNum">      62</span> <span class="tlaGNC">          25 :     }</span></span>
 <span id="L63"><span class="lineNum">      63</span>              : </span>
 <span id="L64"><span class="lineNum">      64</span>              :     // --- 내부 명령어 전송 함수 (기존 SimulatorBridge::send_cmd) ---</span>
-<span id="L65"><span class="lineNum">      65</span> <span class="tlaGNC">          18 :     void send_cmd(const std::string&amp; cmd) {</span></span>
-<span id="L66"><span class="lineNum">      66</span> <span class="tlaGNC">          18 :         int s = get_sock();</span></span>
-<span id="L67"><span class="lineNum">      67</span> <span class="tlaGNC">          18 :         if (s != -1) {</span></span>
+<span id="L65"><span class="lineNum">      65</span> <span class="tlaGNC">          25 :     void send_cmd(const std::string&amp; cmd) {</span></span>
+<span id="L66"><span class="lineNum">      66</span> <span class="tlaGNC">          25 :         int s = get_sock();</span></span>
+<span id="L67"><span class="lineNum">      67</span> <span class="tlaGNC">          25 :         if (s != -1) {</span></span>
 <span id="L68"><span class="lineNum">      68</span> <span class="tlaUNC tlaBgUNC">           0 :             send(s, (cmd + &quot;\n&quot;).c_str(), cmd.length() + 1, 0);</span></span>
 <span id="L69"><span class="lineNum">      69</span>              :         }</span>
-<span id="L70"><span class="lineNum">      70</span> <span class="tlaGNC tlaBgGNC">          18 :     }</span></span>
+<span id="L70"><span class="lineNum">      70</span> <span class="tlaGNC tlaBgGNC">          25 :     }</span></span>
 <span id="L71"><span class="lineNum">      71</span>              : </span>
 <span id="L72"><span class="lineNum">      72</span>              :     // --- 백그라운드 리스너 스레드 (기존 ObstacleSensorInterface::listen) ---</span>
 <span id="L73"><span class="lineNum">      73</span> <span class="tlaUNC tlaBgUNC">           0 :     void background_listener() {</span></span>
@@ -211,19 +211,19 @@
 <span id="L149"><span class="lineNum">     149</span>              :         }</span>
 <span id="L150"><span class="lineNum">     150</span> <span class="tlaUNC">           0 :     }</span></span>
 <span id="L151"><span class="lineNum">     151</span>              : </span>
-<span id="L152"><span class="lineNum">     152</span> <span class="tlaGNC tlaBgGNC">          12 :     void sendDriveCommand(Driving state) {</span></span>
-<span id="L153"><span class="lineNum">     153</span> <span class="tlaGNC">          24 :         std::string is_forward = (state == Driving::MOVEFORWARD) ? &quot;true&quot; : &quot;false&quot;;</span></span>
-<span id="L154"><span class="lineNum">     154</span> <span class="tlaGNC">          24 :         std::string is_backward = (state == Driving::MOVEBACKWARD) ? &quot;true&quot; : &quot;false&quot;;</span></span>
-<span id="L155"><span class="lineNum">     155</span> <span class="tlaGNC">          12 :         std::string turn_str = &quot;0&quot;;</span></span>
+<span id="L152"><span class="lineNum">     152</span> <span class="tlaGNC tlaBgGNC">          19 :     void sendDriveCommand(Driving state) {</span></span>
+<span id="L153"><span class="lineNum">     153</span> <span class="tlaGNC">          38 :         std::string is_forward = (state == Driving::MOVEFORWARD) ? &quot;true&quot; : &quot;false&quot;;</span></span>
+<span id="L154"><span class="lineNum">     154</span> <span class="tlaGNC">          38 :         std::string is_backward = (state == Driving::MOVEBACKWARD) ? &quot;true&quot; : &quot;false&quot;;</span></span>
+<span id="L155"><span class="lineNum">     155</span> <span class="tlaGNC">          19 :         std::string turn_str = &quot;0&quot;;</span></span>
 <span id="L156"><span class="lineNum">     156</span>              : </span>
-<span id="L157"><span class="lineNum">     157</span> <span class="tlaGNC">          12 :         if (state == Driving::TURNLEFT) turn_str = &quot;-1&quot;;</span></span>
-<span id="L158"><span class="lineNum">     158</span> <span class="tlaGNC">          10 :         else if (state == Driving::TURNRIGHT) turn_str = &quot;1&quot;;</span></span>
+<span id="L157"><span class="lineNum">     157</span> <span class="tlaGNC">          19 :         if (state == Driving::TURNLEFT) turn_str = &quot;-1&quot;;</span></span>
+<span id="L158"><span class="lineNum">     158</span> <span class="tlaGNC">          16 :         else if (state == Driving::TURNRIGHT) turn_str = &quot;1&quot;;</span></span>
 <span id="L159"><span class="lineNum">     159</span>              : </span>
-<span id="L160"><span class="lineNum">     160</span> <span class="tlaGNC">          24 :         std::string cmd = &quot;{\&quot;type\&quot;: \&quot;SET_CONTROL\&quot;, \&quot;move\&quot;: &quot; + is_forward + </span></span>
-<span id="L161"><span class="lineNum">     161</span> <span class="tlaGNC">          24 :                           &quot;, \&quot;backward\&quot;: &quot; + is_backward +</span></span>
-<span id="L162"><span class="lineNum">     162</span> <span class="tlaGNC">          12 :                           &quot;, \&quot;turn\&quot;: &quot; + turn_str + &quot;}&quot;;</span></span>
-<span id="L163"><span class="lineNum">     163</span> <span class="tlaGNC">          12 :         send_cmd(cmd); // ⬅️ 내부 함수로 명령어 전송!</span></span>
-<span id="L164"><span class="lineNum">     164</span> <span class="tlaGNC">          12 :     }</span></span>
+<span id="L160"><span class="lineNum">     160</span> <span class="tlaGNC">          38 :         std::string cmd = &quot;{\&quot;type\&quot;: \&quot;SET_CONTROL\&quot;, \&quot;move\&quot;: &quot; + is_forward + </span></span>
+<span id="L161"><span class="lineNum">     161</span> <span class="tlaGNC">          38 :                           &quot;, \&quot;backward\&quot;: &quot; + is_backward +</span></span>
+<span id="L162"><span class="lineNum">     162</span> <span class="tlaGNC">          19 :                           &quot;, \&quot;turn\&quot;: &quot; + turn_str + &quot;}&quot;;</span></span>
+<span id="L163"><span class="lineNum">     163</span> <span class="tlaGNC">          19 :         send_cmd(cmd); // ⬅️ 내부 함수로 명령어 전송!</span></span>
+<span id="L164"><span class="lineNum">     164</span> <span class="tlaGNC">          19 :     }</span></span>
 <span id="L165"><span class="lineNum">     165</span>              : </span>
 <span id="L166"><span class="lineNum">     166</span> <span class="tlaGNC">           6 :     void sendCleanerCommand(CleanerMode mode) {</span></span>
 <span id="L167"><span class="lineNum">     167</span> <span class="tlaGNC">          12 :         std::string m = (mode == CleanerMode::OFF) ? &quot;OFF&quot; : (mode == CleanerMode::ON ? &quot;ON&quot; : &quot;UP&quot;);</span></span>
