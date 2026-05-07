@@ -17,6 +17,7 @@ add_executable(rvc_tests
   UTest_PathPlanner.cpp
   UTest_Timer.cpp
   UTest_CleanerManager.cpp
+  UTest_ObstacleSensorInterface.cpp
 )
 
 target_include_directories(rvc_tests
