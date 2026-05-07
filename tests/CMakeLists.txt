@@ -11,12 +11,7 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 add_executable(rvc_tests
-  UTest_ButtonInterface.cpp
-  UTest_Controller.cpp
-  UTest_DriveManager.cpp
-  UTest_PathPlanner.cpp
-  UTest_Timer.cpp
-  UTest_CleanerManager.cpp
+  UTest_ObstacleSensorInterface.cpp
 )
 
 target_include_directories(rvc_tests
