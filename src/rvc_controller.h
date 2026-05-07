@@ -12,7 +12,7 @@
 
 
 // --- Forward Declarations ---
-class ObstacleSensorInterface;
+class SensorInterface;
 class DustSensorInterface;
 class PathPlanner;
 class DriveManager;
@@ -33,7 +33,7 @@ public:
     virtual void removeTimer();
 };
 
-class ObstacleSensorInterface {
+class SensorInterface {
 private:
     std::function<void()> onEmergency = nullptr;
     Controller* ctrl_ref = nullptr; // Reference to trigger other events
@@ -44,8 +44,8 @@ private:
     void updateSensors();
 
 public:
-    ObstacleSensorInterface();
-    virtual ~ObstacleSensorInterface();
+    SensorInterface();
+    virtual ~SensorInterface();
     
     // Blocking/Event Registration
     virtual void setController(Controller* c) { ctrl_ref = c; }
@@ -66,9 +66,9 @@ public:
 
 class PathPlanner {
 private:
-    ObstacleSensorInterface* osi;
+    SensorInterface* osi;
 public:
-    PathPlanner(ObstacleSensorInterface* osi);
+    PathPlanner(SensorInterface* osi);
     virtual ~PathPlanner() = default;
     virtual Location decisionPath();
 };
@@ -113,7 +113,7 @@ protected:
     DriveManager* driveManager;
     CleanerManager* cleanerManager;
     DustSensorInterface* dustSensorInterface;
-    ObstacleSensorInterface* obstacleSensorInterface;
+    SensorInterface* sensorInterface;
 
     std::atomic<bool> onOff{false};
     bool isAvoiding = false;
@@ -123,7 +123,7 @@ protected:
     void boosterOverHandler();
 
 public:
-    Controller(DriveManager* d, CleanerManager* c, ObstacleSensorInterface* os);
+    Controller(DriveManager* d, CleanerManager* c, SensorInterface* os);
     virtual ~Controller();
 
     virtual void interruptHandler(); // The Callback Function

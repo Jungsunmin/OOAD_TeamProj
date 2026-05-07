@@ -26,7 +26,7 @@ void Timer::setAlarmTimer() {
     timer_struct.it_interval.tv_usec = 0;
 
     //타이머 설정
-    std::cout << "[System] Starting 1000ms timer" << std::endl;
+    std::cout << "1000ms timer" << std::endl;
     if (setitimer(ITIMER_REAL, &timer_struct, nullptr) == -1) {
         std::cerr << "Timer setup failed!" << std::endl;
     }
@@ -44,36 +44,36 @@ void Timer::removeTimer() {
 
 }
 
-// --- ObstacleSensorInterface ---
-ObstacleSensorInterface::ObstacleSensorInterface() {}
-ObstacleSensorInterface::~ObstacleSensorInterface() {}
+// --- SensorInterface ---
+SensorInterface::SensorInterface() {}
+SensorInterface::~SensorInterface() {}
 
-bool ObstacleSensorInterface::isFrontBlocked() {
+bool SensorInterface::isFrontBlocked() {
     // 💡 팁: 통신 요청, 딜레이(sleep), 뮤텍스 락은 모두 Simulator 내부에 숨겨져 있습니다.
     return Simulator::getSensorData().front <= threshold;
 }
 
-bool ObstacleSensorInterface::isLeftBlocked() {
+bool SensorInterface::isLeftBlocked() {
     return Simulator::getSensorData().left <= thresholdside;
 }
 
-bool ObstacleSensorInterface::isRightBlocked() {
+bool SensorInterface::isRightBlocked() {
     return Simulator::getSensorData().right <= thresholdside;
 }
 
-bool ObstacleSensorInterface::isDustExistence() {
+bool SensorInterface::isDustExistence() {
     return Simulator::getSensorData().dust > 0;
 }
 
 // (참고: 만약 isObstacleExist() 함수가 있다면 아래처럼 작성하시면 됩니다)
-ObstacleStatus ObstacleSensorInterface::isObstacleExist() {
+ObstacleStatus SensorInterface::isObstacleExist() {
     SensorData data = Simulator::getSensorData();
     return {data.front <= threshold, data.left <= thresholdside, data.right <= thresholdside};
 }
 
 
 // --- PathPlanner ---
-PathPlanner::PathPlanner(ObstacleSensorInterface* o) : osi(o) {}
+PathPlanner::PathPlanner(SensorInterface* o) : osi(o) {}
 Location PathPlanner::decisionPath() { 
     if (osi->isLeftBlocked()){
         if (osi->isRightBlocked()) return Location::REAR;
@@ -91,6 +91,7 @@ Location DriveManager::avoidObstacle() {
     stopMotor();
     Location turn = pathPlanner->decisionPath();
     if (turn == Location::LEFT) {
+        std::cout<<"trun LEFT start"<<std::endl;
         rotateLeft();
         turnTimer.setTimer();
         stopMotor();
@@ -98,6 +99,7 @@ Location DriveManager::avoidObstacle() {
         return turn;
     }
     else if (turn == Location::RIGHT) {
+        std::cout<<"trun RIGHT start"<<std::endl;
         rotateRight();
         turnTimer.setTimer();
         stopMotor();
@@ -120,12 +122,14 @@ void DriveManager::rotateRight() { Simulator::sendDriveCommand(Driving::TURNRIGH
 void DriveManager::rotateBackward() { Simulator::sendDriveCommand(Driving::MOVEBACKWARD); }
 void DriveManager::stopMotor() { Simulator::sendDriveCommand(Driving::STOP); }
 void DriveManager::rotateLeftb() {
+    std::cout<<"trun LEFT start"<<std::endl;
     Simulator::sendDriveCommand(Driving::TURNLEFT);
     turnTimer.setTimer();
     stopMotor();
     rotateForward();
  }
 void DriveManager::rotateRightb() { 
+    std::cout<<"trun RIGHT start"<<std::endl;
     Simulator::sendDriveCommand(Driving::TURNRIGHT);
     turnTimer.setTimer();
     stopMotor();
@@ -133,14 +137,20 @@ void DriveManager::rotateRightb() {
 }
 // --- CleanerManager ---
 CleanerManager::CleanerManager() : currentMode(CleanerMode::OFF), boostTimer(3000) {}
+
 void CleanerManager::cleanerMode(CleanerMode mode) {
     if (currentMode == mode && mode != CleanerMode::UP) return;
     currentMode = mode;
     Simulator::sendCleanerCommand(mode);
-    if (mode == CleanerMode::OFF) {
+
+
+    if (mode == CleanerMode::ON) {
+        std::cout << "CleanerMode:ON"<<std::endl;
+    } else if (mode == CleanerMode::OFF) {
+        std::cout << "CleanerMode:OFF"<<std::endl;
         boostTimer.removeTimer();
-    }
-    if (mode == CleanerMode::UP) {
+    } else if (mode == CleanerMode::UP) {
+        std::cout << "CleanerMode:UP"<<std::endl;
         boostTimer.setAlarmTimer();
     }
 }
@@ -152,12 +162,12 @@ bool CleanerManager::isBoosterOn() {
 }
 
 // --- Controller ---/
-Controller::Controller(DriveManager* d, CleanerManager* c, ObstacleSensorInterface* os)
-    : driveManager(d), cleanerManager(c), obstacleSensorInterface(os) {
+Controller::Controller(DriveManager* d, CleanerManager* c, SensorInterface* os)
+    : driveManager(d), cleanerManager(c), sensorInterface(os) {
     Simulator::registerObstacleInterruptCallback([this]() {
         this->interruptHandler(); 
     });
-    obstacleSensorInterface->setController(this);
+    sensorInterface->setController(this);
 }
 
 Controller::~Controller() { 
@@ -166,6 +176,7 @@ Controller::~Controller() {
 }
 
 void Controller::interruptHandler() {
+    std::cout << "Interrupt Occured"<<std::endl;
     driveManager->stopMotor();
     this->frontObstacleTriggered.store(true);
 }
@@ -173,16 +184,16 @@ void Controller::interruptHandler() {
 void Controller::avoidanceAction() {
 
     driveManager->stopMotor();
-    std::cout<<"front sensor interrupt"<<std::endl;
+    std::cout<<"front Obstacle found"<<std::endl;
     usleep(1000);
 
-    std::cout << "[System] Obstacle Detected! Starting Avoidance..." << std::endl;
+    std::cout << "Starting Avoidance..." << std::endl;
     cleanerManager->cleanerMode(CleanerMode::OFF);
     
     Location turnLocation = driveManager->avoidObstacle();
     
-    if (obstacleSensorInterface->isFrontBlocked()) {
-        std::cout << "[System] Still Blocked! Maintaining Flag..." << std::endl;
+    if (sensorInterface->isFrontBlocked()) {
+        std::cout << "Still Blocked! Maintaining Flag..." << std::endl;
         return; 
     }
 
@@ -191,34 +202,35 @@ void Controller::avoidanceAction() {
     this->isAlarmSigExist.store(false); //혹시라도 removeTimer 하기 직전에 시그널을 받았을 경우
     if (turnLocation == Location::LEFT) {
         
-        if (!obstacleSensorInterface->isRightBlocked()) {
+        if (!sensorInterface->isRightBlocked()) {
+            std::cout << "Input Error!, turn off" << std::endl;
             errorturnOff();
         } else {
             cleanerManager->cleanerMode(CleanerMode::ON);
         }
     } else if (turnLocation == Location::RIGHT) {
-        if (!obstacleSensorInterface->isLeftBlocked()) {
+        if (!sensorInterface->isLeftBlocked()) {
+            std::cout << "Input Error!, turn off" << std::endl;
             errorturnOff();
         } else {
             cleanerManager->cleanerMode(CleanerMode::ON);
         }
     } else {
         while(onOff) {
-            obstacleSensorInterface->isFrontBlocked(); 
-            if (!obstacleSensorInterface->isLeftBlocked()){
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            sensorInterface->isFrontBlocked(); 
+            if (!sensorInterface->isLeftBlocked()){
+                std::this_thread::sleep_for(std::chrono::milliseconds(450));
                 driveManager->rotateLeftb();
                 break;
             }
-            else if (!obstacleSensorInterface->isRightBlocked()){
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            else if (!sensorInterface->isRightBlocked()){
+                std::this_thread::sleep_for(std::chrono::milliseconds(450));
                 driveManager->rotateRightb();
                 break;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
         cleanerManager->cleanerMode(CleanerMode::ON);
-        printf("asdf");
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
@@ -238,7 +250,8 @@ void Controller::dustDetect() {
             this->isAlarmSigExist.store(false);
         }
         
-        if (obstacleSensorInterface->isDustExistence() && onOff) {
+        if (sensorInterface->isDustExistence() && onOff) {
+            std::cout << "Dust Detected" << std::endl;
             if(cleanerManager->isBoosterOn() == true) {
                 cleanerManager->cleanerMode(CleanerMode::UP);
             } else {
@@ -274,7 +287,7 @@ void Controller::turnOn() {
     std::cout << "[System] POWER ON" << std::endl;
     onOff = true;
 
-    if (obstacleSensorInterface->isFrontBlocked()) {        //처음 turn on이 되었을때, 정면센서 값이 threshold값보다 작을경우 인터럽트 발생을 못함, 때문에 시작후 한번 체크
+    if (sensorInterface->isFrontBlocked()) {        //처음 turn on이 되었을때, 정면센서 값이 threshold값보다 작을경우 인터럽트 발생을 못함, 때문에 시작후 한번 체크
         this->frontObstacleTriggered.store(true);
     }
 
