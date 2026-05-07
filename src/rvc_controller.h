@@ -1,5 +1,5 @@
 #pragma once
-
+#include "common_types.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -19,17 +19,6 @@ class DriveManager;
 class CleanerManager;
 class Controller;
 
-// --- Enums & Structs ---
-
-enum class Location { FRONT, LEFT, RIGHT, REAR };
-enum class Driving { MOVEFORWARD, TURNLEFT, TURNRIGHT, MOVEBACKWARD, STOP };
-enum class CleanerMode { OFF, ON, UP };
-
-struct ObstacleStatus {
-    bool frontBlocked;
-    bool leftBlocked;
-    bool rightBlocked;
-};
 
 // --- Interfaces & Components ---
 
@@ -47,19 +36,11 @@ public:
 class ObstacleSensorInterface {
 private:
     std::function<void()> onEmergency = nullptr;
-    std::thread listenerThread;
-    std::atomic<bool> running;
     Controller* ctrl_ref = nullptr; // Reference to trigger other events
     
-    std::mutex sensorMutex;
-    int last_front = 127;
-    int last_left = 127;
-    int last_right = 127;
-    int last_dust = 0;
     const int threshold = 20;
     const int thresholdside = 60;
 
-    void listen();
     void updateSensors();
 
 public:
@@ -67,7 +48,6 @@ public:
     virtual ~ObstacleSensorInterface();
     
     // Blocking/Event Registration
-    virtual void attachInterrupt(std::function<void()> cb);
     virtual void setController(Controller* c) { ctrl_ref = c; }
     
     // On-demand Polling
@@ -107,7 +87,7 @@ public:
     virtual void rotateRight();
     virtual void rotateBackward();
     virtual void stopMotor();
-    virtual void sendDriveCommand(Driving state);
+    //virtual void sendDriveCommand(Driving state);
     virtual void rotateLeftb();
     virtual void rotateRightb();
     Driving getCurrentState() const { return currentDriveState; }
@@ -123,7 +103,7 @@ public:
     virtual void cleanerMode(CleanerMode mode);
     virtual bool iscleanerOn();
     virtual bool isBoosterOn(); //
-    virtual void sendCleanerCommand(CleanerMode mode);
+    //virtual void sendCleanerCommand(CleanerMode mode);
     CleanerMode getCurrentMode() const { return currentMode; }
 };
 
@@ -143,7 +123,7 @@ protected:
     void boosterOverHandler();
 
 public:
-    Controller(DriveManager* d, CleanerManager* c, DustSensorInterface* ds, ObstacleSensorInterface* os);
+    Controller(DriveManager* d, CleanerManager* c, ObstacleSensorInterface* os);
     virtual ~Controller();
 
     virtual void interruptHandler(); // The Callback Function
