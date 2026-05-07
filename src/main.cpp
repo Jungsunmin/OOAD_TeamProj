@@ -21,9 +21,9 @@ int main() {
         return -1;
     }
 
-    SensorInterface osi;
+    ObstacleSensorInterface osi; //여기가 문제였음. 일단 obsSI로 바꿈.
     
-    PathPlanner planner(&osi);
+    PathPlanner planner(&o브si);
     DriveManager driver(&planner);
     CleanerManager cleaner;
     
