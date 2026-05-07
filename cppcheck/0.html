@@ -223,7 +223,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 
     <div id="menu">
      <p><a href="index.html">Defects:</a> rvc_controller.h</p>
-<a href="0.html#line-40"> noExplicitConstructor 40</a><a href="0.html#line-91"> noExplicitConstructor 91</a><a href="0.html#line-102"> noExplicitConstructor 102</a><a href="0.html#line-163"> noExplicitConstructor 163</a>
+<a href="0.html#line-40"> noExplicitConstructor 40</a><a href="0.html#line-91"> noExplicitConstructor 91</a><a href="0.html#line-102"> noExplicitConstructor 102</a><a href="0.html#line-161"> noExplicitConstructor 161</a>
     </div>
     <div id="content">
 <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span class="normal">  1</span>
@@ -390,9 +390,7 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <span class="normal">162</span>
 <span class="normal">163</span>
 <span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span></pre></div></td><td class="code"><div><pre><span></span><a id="line-1" name="line-1"></a><span class="cp">#pragma once</span>
+<span class="normal">165</span></pre></div></td><td class="code"><div><pre><span></span><a id="line-1" name="line-1"></a><span class="cp">#pragma once</span>
 <a id="line-2" name="line-2"></a>
 <a id="line-3" name="line-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;iostream&gt;</span>
 <a id="line-4" name="line-4"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;string&gt;</span>
@@ -532,33 +530,31 @@ span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 
 <a id="line-138" name="line-138"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="w"> </span><span class="n">onOff</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
 <a id="line-139" name="line-139"></a><span class="w">    </span><span class="kt">bool</span><span class="w"> </span><span class="n">isAvoiding</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
 <a id="line-140" name="line-140"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="w"> </span><span class="n">isAlarmSigExist</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
-<a id="line-141" name="line-141"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="kr">thread</span><span class="w"> </span><span class="n">dustThread</span><span class="p">;</span>
-<a id="line-142" name="line-142"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="kr">thread</span><span class="w"> </span><span class="n">obstacleThread</span><span class="p">;</span>
-<a id="line-143" name="line-143"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="w"> </span><span class="n">ctrlMutex</span><span class="p">;</span>
-<a id="line-144" name="line-144"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="w"> </span><span class="n">timerMutex</span><span class="p">;</span>
-<a id="line-145" name="line-145"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">boosterOverHandler</span><span class="p">();</span>
-<a id="line-146" name="line-146"></a>
-<a id="line-147" name="line-147"></a><span class="n">public</span><span class="o">:</span>
-<a id="line-148" name="line-148"></a><span class="w">    </span><span class="n">Controller</span><span class="p">(</span><span class="n">DriveManager</span><span class="o">*</span><span class="w"> </span><span class="n">d</span><span class="p">,</span><span class="w"> </span><span class="n">CleanerManager</span><span class="o">*</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="n">DustSensorInterface</span><span class="o">*</span><span class="w"> </span><span class="n">ds</span><span class="p">,</span><span class="w"> </span><span class="n">ObstacleSensorInterface</span><span class="o">*</span><span class="w"> </span><span class="n">os</span><span class="p">);</span>
-<a id="line-149" name="line-149"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="o">~</span><span class="n">Controller</span><span class="p">();</span>
-<a id="line-150" name="line-150"></a>
-<a id="line-151" name="line-151"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">interruptHandler</span><span class="p">();</span><span class="w"> </span><span class="c1">// The Callback Function</span>
-<a id="line-152" name="line-152"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">turnOn</span><span class="p">();</span><span class="w"> </span>
-<a id="line-153" name="line-153"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">turnOff</span><span class="p">();</span>
-<a id="line-154" name="line-154"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">errorturnOff</span><span class="p">();</span>
-<a id="line-155" name="line-155"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">dustDetect</span><span class="p">();</span>
-<a id="line-156" name="line-156"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">avoidanceLoop</span><span class="p">();</span>
-<a id="line-157" name="line-157"></a><span class="p">};</span>
-<a id="line-158" name="line-158"></a>
-<a id="line-159" name="line-159"></a><span class="n">class</span><span class="w"> </span><span class="n">ButtonInterface</span><span class="w"> </span><span class="p">{</span>
-<a id="line-160" name="line-160"></a><span class="n">private</span><span class="o">:</span>
-<a id="line-161" name="line-161"></a><span class="w">    </span><span class="n">Controller</span><span class="o">*</span><span class="w"> </span><span class="n">controller</span><span class="p">;</span>
-<a id="line-162" name="line-162"></a><span class="n">public</span><span class="o">:</span>
-<a id="line-163" name="line-163"></a><span class="hll"><span class="w">    </span><span class="n">ButtonInterface</span><span class="p">(</span><span class="n">Controller</span><span class="o">*</span><span class="w"> </span><span class="n">ctrl</span><span class="p">);</span><div class="verbose expandable"><span class="error2">&lt;--- Class 'ButtonInterface' has a constructor with 1 argument that is not explicit. <span class="marker">[+]</span></span><div class="content">Class &apos;ButtonInterface&apos; has a constructor with 1 argument that is not explicit. Such, so called &quot;Converting constructors&quot;, should in general be explicit for type safety reasons as that prevents unintended implicit conversions.</div></div>
-</span><a id="line-164" name="line-164"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="o">~</span><span class="n">ButtonInterface</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">default</span><span class="p">;</span>
-<a id="line-165" name="line-165"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">pushButtonOn</span><span class="p">();</span>
-<a id="line-166" name="line-166"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">pushButtonOff</span><span class="p">();</span>
-<a id="line-167" name="line-167"></a><span class="p">};</span>
+<a id="line-141" name="line-141"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">bool</span><span class="o">&gt;</span><span class="w"> </span><span class="n">frontObstacleTriggered</span><span class="p">{</span><span class="nb">false</span><span class="p">};</span>
+<a id="line-142" name="line-142"></a><span class="w">    </span><span class="n">std</span><span class="o">::</span><span class="kr">thread</span><span class="w"> </span><span class="n">dustThread</span><span class="p">;</span>
+<a id="line-143" name="line-143"></a><span class="w">    </span><span class="kt">void</span><span class="w"> </span><span class="nf">boosterOverHandler</span><span class="p">();</span>
+<a id="line-144" name="line-144"></a>
+<a id="line-145" name="line-145"></a><span class="n">public</span><span class="o">:</span>
+<a id="line-146" name="line-146"></a><span class="w">    </span><span class="n">Controller</span><span class="p">(</span><span class="n">DriveManager</span><span class="o">*</span><span class="w"> </span><span class="n">d</span><span class="p">,</span><span class="w"> </span><span class="n">CleanerManager</span><span class="o">*</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="n">DustSensorInterface</span><span class="o">*</span><span class="w"> </span><span class="n">ds</span><span class="p">,</span><span class="w"> </span><span class="n">ObstacleSensorInterface</span><span class="o">*</span><span class="w"> </span><span class="n">os</span><span class="p">);</span>
+<a id="line-147" name="line-147"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="o">~</span><span class="n">Controller</span><span class="p">();</span>
+<a id="line-148" name="line-148"></a>
+<a id="line-149" name="line-149"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">interruptHandler</span><span class="p">();</span><span class="w"> </span><span class="c1">// The Callback Function</span>
+<a id="line-150" name="line-150"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">turnOn</span><span class="p">();</span><span class="w"> </span>
+<a id="line-151" name="line-151"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">turnOff</span><span class="p">();</span>
+<a id="line-152" name="line-152"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">errorturnOff</span><span class="p">();</span>
+<a id="line-153" name="line-153"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">dustDetect</span><span class="p">();</span>
+<a id="line-154" name="line-154"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">avoidanceAction</span><span class="p">();</span>
+<a id="line-155" name="line-155"></a><span class="p">};</span>
+<a id="line-156" name="line-156"></a>
+<a id="line-157" name="line-157"></a><span class="n">class</span><span class="w"> </span><span class="n">ButtonInterface</span><span class="w"> </span><span class="p">{</span>
+<a id="line-158" name="line-158"></a><span class="n">private</span><span class="o">:</span>
+<a id="line-159" name="line-159"></a><span class="w">    </span><span class="n">Controller</span><span class="o">*</span><span class="w"> </span><span class="n">controller</span><span class="p">;</span>
+<a id="line-160" name="line-160"></a><span class="n">public</span><span class="o">:</span>
+<a id="line-161" name="line-161"></a><span class="hll"><span class="w">    </span><span class="n">ButtonInterface</span><span class="p">(</span><span class="n">Controller</span><span class="o">*</span><span class="w"> </span><span class="n">ctrl</span><span class="p">);</span><div class="verbose expandable"><span class="error2">&lt;--- Class 'ButtonInterface' has a constructor with 1 argument that is not explicit. <span class="marker">[+]</span></span><div class="content">Class &apos;ButtonInterface&apos; has a constructor with 1 argument that is not explicit. Such, so called &quot;Converting constructors&quot;, should in general be explicit for type safety reasons as that prevents unintended implicit conversions.</div></div>
+</span><a id="line-162" name="line-162"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="o">~</span><span class="n">ButtonInterface</span><span class="p">()</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">default</span><span class="p">;</span>
+<a id="line-163" name="line-163"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">pushButtonOn</span><span class="p">();</span>
+<a id="line-164" name="line-164"></a><span class="w">    </span><span class="n">virtual</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">pushButtonOff</span><span class="p">();</span>
+<a id="line-165" name="line-165"></a><span class="p">};</span>
 </pre></div></td></tr></table></div>
 
     </div>

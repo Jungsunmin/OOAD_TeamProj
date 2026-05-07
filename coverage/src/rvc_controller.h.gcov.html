@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-05-07 02:16:25</td>
+            <td class="headerValue">2026-05-07 03:07:36</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryMed">80.0&nbsp;%</td>
@@ -200,33 +200,31 @@
 <span id="L138"><span class="lineNum">     138</span>              :     std::atomic&lt;bool&gt; onOff{false};</span>
 <span id="L139"><span class="lineNum">     139</span>              :     bool isAvoiding = false;</span>
 <span id="L140"><span class="lineNum">     140</span>              :     std::atomic&lt;bool&gt; isAlarmSigExist = false;</span>
-<span id="L141"><span class="lineNum">     141</span>              :     std::thread dustThread;</span>
-<span id="L142"><span class="lineNum">     142</span>              :     std::thread obstacleThread;</span>
-<span id="L143"><span class="lineNum">     143</span>              :     std::mutex ctrlMutex;</span>
-<span id="L144"><span class="lineNum">     144</span>              :     std::mutex timerMutex;</span>
-<span id="L145"><span class="lineNum">     145</span>              :     void boosterOverHandler();</span>
-<span id="L146"><span class="lineNum">     146</span>              : </span>
-<span id="L147"><span class="lineNum">     147</span>              : public:</span>
-<span id="L148"><span class="lineNum">     148</span>              :     Controller(DriveManager* d, CleanerManager* c, DustSensorInterface* ds, ObstacleSensorInterface* os);</span>
-<span id="L149"><span class="lineNum">     149</span>              :     virtual ~Controller();</span>
-<span id="L150"><span class="lineNum">     150</span>              : </span>
-<span id="L151"><span class="lineNum">     151</span>              :     virtual void interruptHandler(); // The Callback Function</span>
-<span id="L152"><span class="lineNum">     152</span>              :     virtual void turnOn(); </span>
-<span id="L153"><span class="lineNum">     153</span>              :     virtual void turnOff();</span>
-<span id="L154"><span class="lineNum">     154</span>              :     virtual void errorturnOff();</span>
-<span id="L155"><span class="lineNum">     155</span>              :     virtual void dustDetect();</span>
-<span id="L156"><span class="lineNum">     156</span>              :     virtual void avoidanceLoop();</span>
-<span id="L157"><span class="lineNum">     157</span>              : };</span>
-<span id="L158"><span class="lineNum">     158</span>              : </span>
-<span id="L159"><span class="lineNum">     159</span>              : class ButtonInterface {</span>
-<span id="L160"><span class="lineNum">     160</span>              : private:</span>
-<span id="L161"><span class="lineNum">     161</span>              :     Controller* controller;</span>
-<span id="L162"><span class="lineNum">     162</span>              : public:</span>
-<span id="L163"><span class="lineNum">     163</span>              :     ButtonInterface(Controller* ctrl);</span>
-<span id="L164"><span class="lineNum">     164</span> <span class="tlaGNC">           4 :     virtual ~ButtonInterface() = default;</span></span>
-<span id="L165"><span class="lineNum">     165</span>              :     virtual void pushButtonOn();</span>
-<span id="L166"><span class="lineNum">     166</span>              :     virtual void pushButtonOff();</span>
-<span id="L167"><span class="lineNum">     167</span>              : };</span>
+<span id="L141"><span class="lineNum">     141</span>              :     std::atomic&lt;bool&gt; frontObstacleTriggered{false};</span>
+<span id="L142"><span class="lineNum">     142</span>              :     std::thread dustThread;</span>
+<span id="L143"><span class="lineNum">     143</span>              :     void boosterOverHandler();</span>
+<span id="L144"><span class="lineNum">     144</span>              : </span>
+<span id="L145"><span class="lineNum">     145</span>              : public:</span>
+<span id="L146"><span class="lineNum">     146</span>              :     Controller(DriveManager* d, CleanerManager* c, DustSensorInterface* ds, ObstacleSensorInterface* os);</span>
+<span id="L147"><span class="lineNum">     147</span>              :     virtual ~Controller();</span>
+<span id="L148"><span class="lineNum">     148</span>              : </span>
+<span id="L149"><span class="lineNum">     149</span>              :     virtual void interruptHandler(); // The Callback Function</span>
+<span id="L150"><span class="lineNum">     150</span>              :     virtual void turnOn(); </span>
+<span id="L151"><span class="lineNum">     151</span>              :     virtual void turnOff();</span>
+<span id="L152"><span class="lineNum">     152</span>              :     virtual void errorturnOff();</span>
+<span id="L153"><span class="lineNum">     153</span>              :     virtual void dustDetect();</span>
+<span id="L154"><span class="lineNum">     154</span>              :     virtual void avoidanceAction();</span>
+<span id="L155"><span class="lineNum">     155</span>              : };</span>
+<span id="L156"><span class="lineNum">     156</span>              : </span>
+<span id="L157"><span class="lineNum">     157</span>              : class ButtonInterface {</span>
+<span id="L158"><span class="lineNum">     158</span>              : private:</span>
+<span id="L159"><span class="lineNum">     159</span>              :     Controller* controller;</span>
+<span id="L160"><span class="lineNum">     160</span>              : public:</span>
+<span id="L161"><span class="lineNum">     161</span>              :     ButtonInterface(Controller* ctrl);</span>
+<span id="L162"><span class="lineNum">     162</span> <span class="tlaGNC">           4 :     virtual ~ButtonInterface() = default;</span></span>
+<span id="L163"><span class="lineNum">     163</span>              :     virtual void pushButtonOn();</span>
+<span id="L164"><span class="lineNum">     164</span>              :     virtual void pushButtonOff();</span>
+<span id="L165"><span class="lineNum">     165</span>              : };</span>
         </pre>
               </td>
             </tr>
