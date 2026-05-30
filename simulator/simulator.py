@@ -148,7 +148,6 @@ class RVCSimulator:
         return {
             "front": raycast_all(self.angle),
             "left": raycast_all(self.angle - math.radians(90), side_origin_x, side_origin_y),
-            "right": raycast_all(self.angle + math.radians(90), side_origin_x, side_origin_y),
             "dust": int(dust_val),
             "pos": (round(self.pos_x, 2), round(self.pos_y, 2))
         }
@@ -239,7 +238,6 @@ class RVCSimulator:
         pygame.draw.circle(self.screen, (255,255,0) if sensors['front'] <= INTERRUPT_THRESHOLD else (255,0,0), (sx, sy), rad)
         pygame.draw.line(self.screen, (0,255,0), (sx, sy), (sx + int(math.cos(self.angle) * rad * FRONT_SENSOR_DRAW_LENGTH), sy + int(math.sin(self.angle) * rad * FRONT_SENSOR_DRAW_LENGTH)), 3)
         pygame.draw.line(self.screen, (0,255,0), (side_sx, side_sy), (side_sx + int(math.cos(self.angle - math.radians(90)) * rad * SIDE_SENSOR_DRAW_LENGTH), side_sy + int(math.sin(self.angle - math.radians(90)) * rad * SIDE_SENSOR_DRAW_LENGTH)), 3)
-        pygame.draw.line(self.screen, (0,255,0), (side_sx, side_sy), (side_sx + int(math.cos(self.angle + math.radians(90)) * rad * SIDE_SENSOR_DRAW_LENGTH), side_sy + int(math.sin(self.angle + math.radians(90)) * rad * SIDE_SENSOR_DRAW_LENGTH)), 3)
         pygame.draw.rect(self.screen, (200,200,200), (600, 0, 200, 600))
         pygame.draw.rect(self.screen, (0,255,0), self.btn_on_rect); self.screen.blit(self.font.render("POWER ON", True, (255,255,255)), (660, 62))
         pygame.draw.rect(self.screen, (255,0,0), self.btn_off_rect); self.screen.blit(self.font.render("POWER OFF", True, (255,255,255)), (658, 112))
@@ -250,7 +248,6 @@ class RVCSimulator:
         self.screen.blit(self.font.render(f"Front Sensor: {sensors['front']}", True, (0,0,0)), (620, 310))
         self.screen.blit(self.font.render(f"Dust Sensor: {sensors['dust']}", True, (0,0,0)), (620, 340))
         self.screen.blit(self.font.render(f"Left Sensor: {sensors['left']}", True, (0,0,0)), (620, 370))
-        self.screen.blit(self.font.render(f"Right Sensor: {sensors['right']}", True, (0,0,0)), (620, 400))
         pygame.display.flip()
 
     def save_map_to_py(self):

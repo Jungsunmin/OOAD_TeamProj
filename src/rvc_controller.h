@@ -19,7 +19,6 @@ class DriveManager;
 class CleanerManager;
 class Controller;
 
-
 // --- Interfaces & Components ---
 
 class Timer {
@@ -70,6 +69,7 @@ private:
     ObstacleSensorInterface* osi;
 public:
     PathPlanner(ObstacleSensorInterface* osi);
+    Location decisionAfterClockwise();
     virtual ~PathPlanner() = default;
     virtual Location decisionPath();
 };

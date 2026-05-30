@@ -18,7 +18,7 @@ namespace {
     
     // --- 센서 및 콜백 관리 변수 ---
     std::mutex sensor_mtx;
-    SensorData current_sensor_data = {127, 127, 127, 0};
+    SensorData current_sensor_data = {127, 127, 0};
 
     std::function<void()> on_obstacle_interrupt = nullptr;
     std::function<void(const std::string&)> on_button_event = nullptr;
@@ -114,13 +114,11 @@ namespace {
                 else { // 센서 값 갱신
                     std::string front_val = get_json_value(msg, "front");
                     std::string left_val  = get_json_value(msg, "left");
-                    std::string right_val = get_json_value(msg, "right");
                     std::string dust_val  = get_json_value(msg, "dust");
                     
                     std::lock_guard<std::mutex> lock(sensor_mtx);
                     if (!front_val.empty()) current_sensor_data.front = std::stoi(front_val);
                     if (!left_val.empty())  current_sensor_data.left  = std::stoi(left_val);
-                    if (!right_val.empty()) current_sensor_data.right = std::stoi(right_val);
                     if (!dust_val.empty())  current_sensor_data.dust  = std::stoi(dust_val);
                 }
             }

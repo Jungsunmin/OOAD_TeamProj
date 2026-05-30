@@ -82,7 +82,6 @@ class HeadlessSimulator:
         return {
             "front": raycast_surface(self.angle),
             "left": raycast_surface(self.angle - math.radians(45)),
-            "right": raycast_surface(self.angle + math.radians(45)),
             "dust": int(dust_val),
             "pos": (round(self.pos_x, 2), round(self.pos_y, 2))
         }
