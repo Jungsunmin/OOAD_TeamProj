@@ -52,7 +52,7 @@ public:
     // On-demand Polling
     virtual bool isFrontBlocked();
     virtual bool isLeftBlocked();
-    virtual bool isRightBlocked();
+    // 오른쪽 센서는 제거됨 (cpp 주석 참고). 테스트용 Mock은 override 없이 별도로 유지됨.
     // virtual ObstacleStatus isObstacleExist();
     /// ObstacleStatus 삭제됨
     virtual bool isDustExistence();
@@ -117,7 +117,7 @@ protected:
     ObstacleSensorInterface* obstacleSensorInterface;
 
     std::atomic<bool> onOff{false};
-    bool isAvoiding = false;
+    std::atomic<bool> isAvoiding{false};
     std::atomic<bool> isAlarmSigExist = false;
     std::atomic<bool> frontObstacleTriggered{false};
     std::thread dustThread;

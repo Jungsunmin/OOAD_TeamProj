@@ -6,6 +6,7 @@
 #include <mutex>
 #include <iostream>
 #include <cstring>
+#include <cerrno>
 
 // 💡 1. 익명 네임스페이스: 외부(다른 cpp 파일)에서는 절대 접근할 수 없는 내부 전용 변수/함수들
 namespace {
@@ -83,14 +84,29 @@ namespace {
             
             char chunk[4096] = {0};
             int valread = recv(current_sock, chunk, 4096, 0);
-            
-            // 💡 통신 끊김 처리 (valread <= 0): 소켓을 닫고 -1로 만들면 다음 루프에서 get_sock()이 재연결 시도
-            if (valread <= 0) { 
+
+            // 수신 타임아웃(EAGAIN/EWOULDBLOCK)이나 시그널에 의한 인터럽트(EINTR)는
+            // 정상적인 "데이터 없음" 상태이므로 소켓을 닫지 않고 그대로 다음 루프로 넘어갑니다.
+            // (SO_RCVTIMEO를 100ms로 걸어두었기 때문에 평상시에도 주기적으로 -1이 반환됩니다)
+            if (valread < 0) {
+                if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
+                    continue;
+                }
+                // 그 외 에러는 진짜 통신 오류이므로 소켓을 닫고 재연결을 시도합니다.
                 std::lock_guard<std::mutex> lock(sock_mtx);
                 close(sock);
                 sock = -1;
-                std::this_thread::sleep_for(std::chrono::milliseconds(50)); 
-                continue; 
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                continue;
+            }
+
+            // 상대방이 정상적으로 연결을 종료한 경우(valread == 0): 소켓을 닫고 재연결 시도
+            if (valread == 0) {
+                std::lock_guard<std::mutex> lock(sock_mtx);
+                close(sock);
+                sock = -1;
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                continue;
             }
             
             buffer += std::string(chunk, valread);

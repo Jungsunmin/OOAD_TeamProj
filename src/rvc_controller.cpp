@@ -92,7 +92,7 @@ Location PathPlanner::decisionAfterClockwise() {
 
 // --- DriveManager ---
 DriveManager::DriveManager(PathPlanner* pp)
-    : pathPlanner(pp), currentDriveState(Driving::STOP), turnTimer(1020) {}
+    : pathPlanner(pp), currentDriveState(Driving::STOP), turnTimer(1000) {}
 
 Location DriveManager::avoidObstacle() {
     while (true) {
@@ -242,11 +242,18 @@ Controller::~Controller() {
 }
 
 void Controller::interruptHandler() {
+    // 회피 진행 중에는 회전 sweep 으로 인한 추가 INTERRUPT 를 무시
+    // (다시 전진+청소가 재개되는 시점에 isAvoiding 이 false 로 풀림)
+    if (this->isAvoiding.load()) return;
+
     driveManager->stopMotor();
     this->frontObstacleTriggered.store(true);
 }
 
 void Controller::avoidanceAction() {
+    // 회피 진입 시점부터 추가 인터럽트를 무시 (회전 중 sweep 으로 재발화되는 INTERRUPT 차단)
+    this->isAvoiding.store(true);
+
     driveManager->stopMotor();
 
     std::cout << "front sensor interrupt" << std::endl;
@@ -261,6 +268,7 @@ void Controller::avoidanceAction() {
     driveManager->avoidObstacle();
 
     // 회피 후에도 전방이 막혀 있다면 인터럽트 플래그를 유지해서 다음 루프에서 다시 회피합니다.
+    // 이 분기에서는 isAvoiding 도 true 로 유지해 다음 사이클에서도 인터럽트를 계속 무시합니다.
     if (obstacleSensorInterface->isFrontBlocked()) {
         std::cout << "[System] Still Blocked! Maintaining Flag..." << std::endl;
         return;
@@ -273,6 +281,9 @@ void Controller::avoidanceAction() {
     this->isAlarmSigExist.store(false);
 
     cleanerManager->cleanerMode(CleanerMode::ON);
+
+    // 전진 + 청소 재개 시점에 회피 종료 처리: 이후 INTERRUPT 를 다시 받음
+    this->isAvoiding.store(false);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
@@ -328,6 +339,9 @@ void Controller::turnOn() {
     std::cout << "[System] POWER ON" << std::endl;
     onOff = true;
 
+    // 이전 전원 사이클에서 회피 도중 turnOff 된 경우를 대비해 회피 플래그 초기화
+    this->isAvoiding.store(false);
+
     // 처음 turn on 되었을 때 정면 센서가 이미 threshold보다 작으면
     // interrupt가 발생하지 못할 수 있으므로 시작 시 한 번 체크합니다.
     if (obstacleSensorInterface->isFrontBlocked()) {
@@ -349,6 +363,9 @@ void Controller::turnOff() {
 
     std::cout << "[System] POWER OFF" << std::endl;
     onOff = false;
+
+    // 회피 도중 전원이 꺼지더라도 다음 부팅에서 인터럽트가 영구 차단되지 않도록 초기화
+    this->isAvoiding.store(false);
 
     if (dustThread.joinable() && dustThread.get_id() != std::this_thread::get_id()) {
         dustThread.join();
