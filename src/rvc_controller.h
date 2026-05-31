@@ -36,9 +36,6 @@ class ObstacleSensorInterface {
 private:
     std::function<void()> onEmergency = nullptr;
     Controller* ctrl_ref = nullptr; // Reference to trigger other events
-    
-    const int threshold = 20;
-    const int thresholdside = 60;
 
     void updateSensors();
 
