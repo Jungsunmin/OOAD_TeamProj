@@ -46,7 +46,7 @@ TEST_F(ObstacleSensorInterfaceTest, Check_Front_Blocked) {
  
     for (const auto& c : cases) {
         osi.setSensorData(c.front, 100, 100, 0);
-        EXPECT_EQ(osi.isFrontBlocked(), c.expected)
+        EXPECT_EQ(osi.isFrontBlockedTest(), c.expected)
             << "front=" << c.front;
     }
 }
@@ -69,7 +69,7 @@ TEST_F(ObstacleSensorInterfaceTest, Check_Left_Blocked) {
  
     for (const auto& c : cases) {
         osi.setSensorData(100, c.left, 100, 0);
-        EXPECT_EQ(osi.isLeftBlocked(), c.expected)
+        EXPECT_EQ(osi.isLeftBlockedTest(), c.expected)
             << "left=" << c.left;
     }
 }
@@ -122,7 +122,7 @@ TEST_F(ObstacleSensorInterfaceTest, IsDustExistence_BoundaryValues) {
  
     for (const auto& c : cases) {
         osi.setSensorData(100, 100, 100, c.dust);
-        EXPECT_EQ(osi.isDustExistence(), c.expected)
+        EXPECT_EQ(osi.isDustExistenceTest(), c.expected)
             << "dust=" << c.dust;
     }
 }
