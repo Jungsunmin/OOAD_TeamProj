@@ -52,6 +52,9 @@ public:
     virtual void setController(Controller* c) { ctrl_ref = c; }
     
     // On-demand Polling
+    virtual bool isFrontBlockedTest();
+    virtual bool isLeftBlockedTest();
+    virtual bool isDustExistenceTest();
     virtual bool isFrontBlocked();
     virtual bool isLeftBlocked();
     // 오른쪽 센서는 제거됨 (cpp 주석 참고). 테스트용 Mock은 override 없이 별도로 유지됨.
