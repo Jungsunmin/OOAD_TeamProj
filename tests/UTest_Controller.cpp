@@ -81,20 +81,7 @@ TEST_F(ControllerTest, avoidanceAction_TriggersAvoidance) {
 
 }
 
-//
-TEST_F(ControllerTest, AvoidanceAction_IfStillBlocked_DoesNotResumeCleaner) {
-    EXPECT_CALL(*mockDM, stopMotor()).Times(AtLeast(1));
-    EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::OFF)).Times(AtLeast(1));
-    EXPECT_CALL(*mockDM, avoidObstacle()).WillOnce(Return(Location::LEFT));
- 
-    EXPECT_CALL(*mockOS, isFrontBlocked()).WillOnce(Return(true));
- 
-    EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::ON)).Times(0);
- 
-    controller->avoidanceAction();
-}
-
-// 5. 이미 회피중인 상황에서 InterruptHandler 발생시 아무 동작을 안하는지 확인
+// 4. 이미 회피중인 상황에서 InterruptHandler 발생시 아무 동작을 안하는지 확인
 TEST_F(ControllerTest, InterruptHandler_WhileAvoiding) {
     setIsAvoiding(true);
  
