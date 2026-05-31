@@ -23,8 +23,6 @@ protected:
     SensorData readSensorData() override { return fake; }
 };
  
-}
- 
 class ObstacleSensorInterfaceTest : public ::testing::Test {
 protected:
     FakeOSI osi;
@@ -66,7 +64,7 @@ TEST_F(ObstacleSensorInterfaceTest, Check_Left_Blocked) {
         { 60,  true},
         { 61,  false},
         { 73,  false},
-        { 115, false, "well above threshold" },
+        { 115, false},
     };
  
     for (const auto& c : cases) {

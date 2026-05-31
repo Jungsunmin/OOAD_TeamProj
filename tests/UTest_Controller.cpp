@@ -72,7 +72,7 @@ TEST_F(ControllerTest, avoidanceAction_TriggersAvoidance) {
 
     // 회피 후 정면 체크 (성공했다고 가정하여 false 리턴)=
 
-    EXPECT_CALL(*mockOS, isRightBlocked()).WillOnce(Return(true));
+    EXPECT_CALL(*mockOS, isFrontBlocked()).WillOnce(Return(false));
     
     // 회피 성공 후 청소기를 다시 ON으로 돌리는 호출 추가
     EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::ON)).Times(AtLeast(1));

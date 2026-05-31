@@ -42,6 +42,11 @@ private:
 
     void updateSensors();
 
+protected:
+    const int threshold = 20;
+    const int thresholdside = 60;
+    virtual SensorData readSensorData();
+
 public:
     ObstacleSensorInterface();
     virtual ~ObstacleSensorInterface();

@@ -48,6 +48,11 @@ ObstacleSensorInterface::ObstacleSensorInterface() {}
 
 ObstacleSensorInterface::~ObstacleSensorInterface() {}
 
+SensorData ObstacleSensorInterface::readSensorData() {
+    return Simulator::getSensorData();
+}
+
+
 bool ObstacleSensorInterface::isFrontBlocked() {
     // 통신 요청, 딜레이(sleep), 뮤텍스 락은 Simulator 내부에 숨겨져 있습니다.
     return Simulator::getSensorData().front <= threshold;

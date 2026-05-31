@@ -48,6 +48,7 @@ public:
     ////삭제된 함수와 구조체 자료형
     // MOCK_METHOD(ObstacleStatus, isObstacleExist, (), (override));
     MOCK_METHOD(bool, isDustExistence, (), (override));
+    MOCK_METHOD(SensorData, readSensorData, (), (override));
 };
 
 //삭제
