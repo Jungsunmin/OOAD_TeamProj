@@ -16,6 +16,13 @@ protected:
     NiceMock<MockPathPlanner>* mockPP;
     Controller* controller;
 
+    bool getFrontObstacleTriggered() const {
+        return controller->frontObstacleTriggered.load();
+    }
+    void setIsAvoiding(bool flag) {
+        controller->isAvoiding.store(flag);
+    }
+
     void SetUp() override {
         mockOS = new NiceMock<MockObstacleSensorInterface>();
         mockCM = new NiceMock<MockCleanerManager>();
@@ -57,7 +64,6 @@ TEST_F(ControllerTest, avoidanceAction_TriggersAvoidance) {
     struct TestController : public Controller {
         using Controller::Controller;
     };
-    TestController* testCtrl = new TestController(mockDM, mockCM, mockOS);
 
     // 전방 장애물 감지 시나리오
     EXPECT_CALL(*mockDM, stopMotor()).Times(AtLeast(1));
@@ -71,11 +77,31 @@ TEST_F(ControllerTest, avoidanceAction_TriggersAvoidance) {
     // 회피 성공 후 청소기를 다시 ON으로 돌리는 호출 추가
     EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::ON)).Times(AtLeast(1));
     
-    testCtrl->avoidanceAction();
+    controller->avoidanceAction();
 
-    delete testCtrl;
 }
 
+//
+TEST_F(ControllerTest, AvoidanceAction_IfStillBlocked_DoesNotResumeCleaner) {
+    EXPECT_CALL(*mockDM, stopMotor()).Times(AtLeast(1));
+    EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::OFF)).Times(AtLeast(1));
+    EXPECT_CALL(*mockDM, avoidObstacle()).WillOnce(Return(Location::LEFT));
+ 
+    EXPECT_CALL(*mockOS, isFrontBlocked()).WillOnce(Return(true));
+ 
+    EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::ON)).Times(0);
+ 
+    controller->avoidanceAction();
+}
+
+// 5. 이미 회피중인 상황에서 InterruptHandler 발생시 아무 동작을 안하는지 확인
+TEST_F(ControllerTest, InterruptHandler_WhileAvoiding) {
+    setIsAvoiding(true);
+ 
+    EXPECT_CALL(*mockDM, stopMotor()).Times(0);
+ 
+    controller->interruptHandler();
+}
 
 // 4. dustDetect()에서 먼지 감지시 booster 모드 확인, on -> up시 sigalarm을 기다리는 스레드를 생성하는 코드부분 실행(첫번쨰 루프), up ->up시 스레드 생성 없이 리셋만 하는지 확인
 // TEST_F(ControllerTest, DustDetect_TwoLoopIteration_ThreadSpawningLogic) {

@@ -45,7 +45,6 @@ public:
     MOCK_METHOD(void, setController, (Controller*), (override));
     MOCK_METHOD(bool, isFrontBlocked, (), (override));
     MOCK_METHOD(bool, isLeftBlocked, (), (override));
-    MOCK_METHOD(bool, isRightBlocked, (), (override));
     ////삭제된 함수와 구조체 자료형
     // MOCK_METHOD(ObstacleStatus, isObstacleExist, (), (override));
     MOCK_METHOD(bool, isDustExistence, (), (override));
