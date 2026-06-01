@@ -39,11 +39,14 @@ TEST_F(CleanerManagerTest, Test_getCurrentMode_iscleanerOn) {
 }
 
 TEST_F(CleanerManagerTest, Test_cleanerMode_UP) {
+    EXPECT_FALSE(cleanerManager->isBoosterOn());
     cleanerManager->cleanerMode(CleanerMode::UP);
     EXPECT_EQ(cleanerManager->getCurrentMode(), CleanerMode::UP);
+    EXPECT_TRUE(cleanerManager->isBoosterOn());
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     EXPECT_EQ(cleanerManager->getCurrentMode(), CleanerMode::UP);
     
     cleanerManager->cleanerMode(CleanerMode::OFF);
+    EXPECT_FALSE(cleanerManager->isBoosterOn());
 }

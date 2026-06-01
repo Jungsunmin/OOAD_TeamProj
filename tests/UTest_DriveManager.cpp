@@ -89,4 +89,15 @@ TEST_F(DriveManagerTest, Forward_After_RotateRight) {
     driveManager->rotateRightb();
     EXPECT_EQ(driveManager->getCurrentState(), Driving::MOVEFORWARD);
 }
+
+
+ // 6. avoidObstacle: decisionPath 가 알 수 없는 값을 돌려주면 안전 정지
+TEST_F(DriveManagerTest, AvoidObstacle_UnknownValue_StopsMotor) {
+    // Forward 는 직접 반환되지 않는 값 → unknown 분기로 빠짐
+    EXPECT_CALL(*mockPP, decisionPath()).WillOnce(Return(Location::Forward));
  
+    Location result = driveManager->avoidObstacle();
+ 
+    EXPECT_EQ(result, Location::Forward);
+    EXPECT_EQ(driveManager->getCurrentState(), Driving::STOP);
+}

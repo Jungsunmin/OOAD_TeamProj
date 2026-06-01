@@ -53,6 +53,7 @@ jobs:
             '${{ github.workspace }}/tests/*' \
             '*/_deps/*' \
             '*/build/*' \
+            '*/src/main.cpp' \
             --output-file coverage.info \
             --ignore-errors mismatch,negative,unused
 

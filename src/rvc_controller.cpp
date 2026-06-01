@@ -52,29 +52,16 @@ SensorData ObstacleSensorInterface::readSensorData() {
     return Simulator::getSensorData();
 }
 
-bool ObstacleSensorInterface::isFrontBlockedTest() {
+bool ObstacleSensorInterface::isFrontBlocked() {
     return readSensorData().front <= threshold;
 }
 
-bool ObstacleSensorInterface::isLeftBlockedTest() {
+bool ObstacleSensorInterface::isLeftBlocked() {
     return readSensorData().left <= thresholdside;
 }
 
-bool ObstacleSensorInterface::isDustExistenceTest() {
-    return readSensorData().dust > 0; 
-}
-
-
-bool ObstacleSensorInterface::isFrontBlocked() {
-    return Simulator::getSensorData().front <= threshold;
-}
-
-bool ObstacleSensorInterface::isLeftBlocked() {
-    return Simulator::getSensorData().left <= thresholdside;
-}
-
 bool ObstacleSensorInterface::isDustExistence() {
-    return Simulator::getSensorData().dust > 0;
+    return readSensorData().dust > 0; 
 }
 
 
