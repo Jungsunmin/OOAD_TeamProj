@@ -11,10 +11,26 @@ class ControllerTest : public ::testing::Test {
 protected:
     NiceMock<MockDriveManager>* mockDM;
     NiceMock<MockCleanerManager>* mockCM;
-
     NiceMock<MockObstacleSensorInterface>* mockOS;
     NiceMock<MockPathPlanner>* mockPP;
     Controller* controller;
+
+    bool getFrontObstacleTriggered() const {
+        return controller->frontObstacleTriggered.load();
+    }
+    void setIsAvoiding(bool flag) {
+        controller->isAvoiding.store(flag);
+    }
+
+    void setFrontObstacleTriggered(bool flag) {
+        controller->frontObstacleTriggered.store(flag);
+    }
+    void callBoosterOverHandler() {
+        controller->boosterOverHandler();
+    }
+    bool getAlarmSig() const {
+        return controller->isAlarmSigExist.load();
+    }
 
     void SetUp() override {
         mockOS = new NiceMock<MockObstacleSensorInterface>();
@@ -53,11 +69,7 @@ TEST_F(ControllerTest, TurnOff_CallsComponents) {
 }
 
 // 3. 장애물 감지 시 회피 로직 호출 검증
-TEST_F(ControllerTest, avoidanceAction_TriggersAvoidance) {
-    struct TestController : public Controller {
-        using Controller::Controller;
-    };
-    TestController* testCtrl = new TestController(mockDM, mockCM, mockOS);
+TEST_F(ControllerTest, AvoidanceAction_TriggersAvoidance) {
 
     // 전방 장애물 감지 시나리오
     EXPECT_CALL(*mockDM, stopMotor()).Times(AtLeast(1));
@@ -66,16 +78,94 @@ TEST_F(ControllerTest, avoidanceAction_TriggersAvoidance) {
 
     // 회피 후 정면 체크 (성공했다고 가정하여 false 리턴)=
 
-    EXPECT_CALL(*mockOS, isRightBlocked()).WillOnce(Return(true));
+    EXPECT_CALL(*mockOS, isFrontBlocked()).WillOnce(Return(false));
     
     // 회피 성공 후 청소기를 다시 ON으로 돌리는 호출 추가
     EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::ON)).Times(AtLeast(1));
     
-    testCtrl->avoidanceAction();
+    controller->avoidanceAction();
 
-    delete testCtrl;
 }
 
+// 4. 회피중이 아닌 상태에서 InterruptHandler 모터 정지 + 플래그 설정 기능 동작 확인
+TEST_F(ControllerTest, InterruptHandler_StopsMotorAndSetsFlag) {
+    setIsAvoiding(false);
+    setFrontObstacleTriggered(false);
+ 
+    EXPECT_CALL(*mockDM, stopMotor()).Times(1);
+ 
+    controller->interruptHandler();
+ 
+    EXPECT_TRUE(getFrontObstacleTriggered());
+}
+
+// 5. 이미 회피중인 상황에서 InterruptHandler 발생시 아무 동작을 안하는지 확인
+TEST_F(ControllerTest, InterruptHandler_WhileAvoiding) {
+    setIsAvoiding(true);
+ 
+    EXPECT_CALL(*mockDM, stopMotor()).Times(0);
+ 
+    controller->interruptHandler();
+}
+
+// 6. 회피 로직 이후 전방이 막혀 있을 때 cleaner가 그대로 있는지 확인
+TEST_F(ControllerTest, AvoidanceAction_BlockedAfterAvoidance_DoesNotResumeCleaner) {
+    EXPECT_CALL(*mockDM, stopMotor()).Times(AtLeast(1));
+    EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::OFF)).Times(AtLeast(1));
+    EXPECT_CALL(*mockDM, avoidObstacle()).WillOnce(Return(Location::LEFT));
+ 
+    EXPECT_CALL(*mockOS, isFrontBlocked()).WillOnce(Return(true));
+ 
+    EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::ON)).Times(0);
+ 
+    controller->avoidanceAction();
+}
+
+// 7. errorturnOff()가 turnOff() 와 동일하게 동작하는지 확인
+TEST_F(ControllerTest, ErrorTurnOff) {
+    controller->turnOn();
+ 
+    EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::OFF)).Times(1);
+    EXPECT_CALL(*mockDM, stopMotor()).Times(1);
+ 
+    controller->errorturnOff();
+}
+
+// 8. turnOff() 가 onOff=false 일 때 안전성 확인
+TEST_F(ControllerTest, TurnOff_WhenAlreadyOff) {
+    EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::OFF)).Times(0);
+    EXPECT_CALL(*mockDM, stopMotor()).Times(0);
+ 
+    controller->turnOff();
+}
+
+// 9. turnOn() 두 번 호출해도 한 번만 시작되는지 확인
+TEST_F(ControllerTest, TurnOn_OnlyOnce) {
+    EXPECT_CALL(*mockCM, cleanerMode(CleanerMode::ON)).Times(1);
+    EXPECT_CALL(*mockDM, rotateForward()).Times(1);
+ 
+    controller->turnOn();
+    controller->turnOn();
+}
+
+// 10. boosterOverHandler() 호출 시 isAlarmSigExist 가 true 로 set 되는지 확인
+TEST_F(ControllerTest, BoosterOverHandler_SetsAlarmFlag) {
+    EXPECT_FALSE(getAlarmSig());
+    callBoosterOverHandler();
+    EXPECT_TRUE(getAlarmSig());
+}
+
+// 11. turnOn() 진입 시점에 이미 정면이 막혀 있으면 frontObstacleTriggered 가 true로 set 되는지 확인
+TEST_F(ControllerTest, TurnOn_WhenFrontAlreadyBlocked) {
+    ON_CALL(*mockDM, avoidObstacle()).WillByDefault(Return(Location::LEFT));
+    ON_CALL(*mockOS, isFrontBlocked()).WillByDefault(Return(true));
+ 
+    controller->turnOn();
+ 
+    EXPECT_TRUE(getFrontObstacleTriggered());
+ 
+    controller->turnOff();
+}
 
 // 4. dustDetect()에서 먼지 감지시 booster 모드 확인, on -> up시 sigalarm을 기다리는 스레드를 생성하는 코드부분 실행(첫번쨰 루프), up ->up시 스레드 생성 없이 리셋만 하는지 확인
 // TEST_F(ControllerTest, DustDetect_TwoLoopIteration_ThreadSpawningLogic) {

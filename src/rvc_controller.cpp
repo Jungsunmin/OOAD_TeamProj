@@ -48,19 +48,20 @@ ObstacleSensorInterface::ObstacleSensorInterface() {}
 
 ObstacleSensorInterface::~ObstacleSensorInterface() {}
 
+SensorData ObstacleSensorInterface::readSensorData() {
+    return Simulator::getSensorData();
+}
+
 bool ObstacleSensorInterface::isFrontBlocked() {
-    // 통신 요청, 딜레이(sleep), 뮤텍스 락은 Simulator 내부에 숨겨져 있습니다.
-    return Simulator::getSensorData().front <= threshold;
+    return readSensorData().front <= threshold;
 }
 
 bool ObstacleSensorInterface::isLeftBlocked() {
-    return Simulator::getSensorData().left <= thresholdside;
+    return readSensorData().left <= thresholdside;
 }
 
-// 오른쪽 센서는 제거되었으므로 isRightBlocked() 구현/호출을 모두 삭제했습니다.
-
 bool ObstacleSensorInterface::isDustExistence() {
-    return Simulator::getSensorData().dust > 0;
+    return readSensorData().dust > 0; 
 }
 
 

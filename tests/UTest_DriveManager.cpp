@@ -55,20 +55,49 @@ TEST_F(DriveManagerTest, AvoidObstacle_LogicTest) {
     EXPECT_EQ(driveManager->getCurrentState(), Driving::MOVEFORWARD);
 }
 
-//2-2. 회피 로직 중 우회전 상태 테스트
-TEST_F(DriveManagerTest, DriveManagerTest_AvoidObstacle_LogicTest_Right) {    // PathPlanner가 오른쪽으로 가라고 명령할 것임을 설정
-    EXPECT_CALL(*mockPP, decisionPath()).WillOnce(Return(Location::RIGHT));
-    Location result = driveManager->avoidObstacle();    EXPECT_EQ(result, Location::RIGHT);    // 회피 후 다시 전진 상태로 복구되었는지 확인
+// 3. 우회전 후 전방이 뚫려 있을 때 전진하는지 테스트
+TEST_F(DriveManagerTest, AvoidObstacle_Forward_After_Clockwise) {
+    EXPECT_CALL(*mockPP, decisionPath()).WillOnce(Return(Location::Clockwise));
+    EXPECT_CALL(*mockOSI, isFrontBlocked()).WillOnce(Return(false));
+ 
+    Location result = driveManager->avoidObstacle();
+ 
+    EXPECT_EQ(result, Location::Forward);
     EXPECT_EQ(driveManager->getCurrentState(), Driving::MOVEFORWARD);
 }
-// 3. 특수 회전 로직 테스트
-TEST_F(DriveManagerTest, RotateRightb_ExecutionTest) {
+
+// 4. 우회전 후 전방이 막혀 있을 때 다시 좌회전하는지 테스트
+TEST_F(DriveManagerTest, AvoidObstacle_Counterclockwise_After_Clockwise) {
+    EXPECT_CALL(*mockPP, decisionPath())
+        .WillOnce(Return(Location::Clockwise))
+        .WillOnce(Return(Location::LEFT));
+ 
+    EXPECT_CALL(*mockOSI, isFrontBlocked()).WillOnce(Return(true));
+ 
+    Location result = driveManager->avoidObstacle();
+ 
+    EXPECT_EQ(result, Location::LEFT);
+    EXPECT_EQ(driveManager->getCurrentState(), Driving::MOVEFORWARD);
+}
+
+// 5. 회전 후 전진 상태로 복귀하는지 확인
+TEST_F(DriveManagerTest, Forward_After_RotateLeft) {
+    driveManager->rotateLeftb();
+    EXPECT_EQ(driveManager->getCurrentState(), Driving::MOVEFORWARD);
+}
+TEST_F(DriveManagerTest, Forward_After_RotateRight) {
     driveManager->rotateRightb();
     EXPECT_EQ(driveManager->getCurrentState(), Driving::MOVEFORWARD);
 }
 
-//3-2. 후진 후 회전. 좌회전 방향
-TEST_F(DriveManagerTest, RotateLeftb_ExecutionTest) {
-    driveManager->rotateLeftb();
-    EXPECT_EQ(driveManager->getCurrentState(), Driving::MOVEFORWARD);
+
+ // 6. avoidObstacle: decisionPath 가 알 수 없는 값을 돌려주면 안전 정지
+TEST_F(DriveManagerTest, AvoidObstacle_UnknownValue_StopsMotor) {
+    // Forward 는 직접 반환되지 않는 값 → unknown 분기로 빠짐
+    EXPECT_CALL(*mockPP, decisionPath()).WillOnce(Return(Location::Forward));
+ 
+    Location result = driveManager->avoidObstacle();
+ 
+    EXPECT_EQ(result, Location::Forward);
+    EXPECT_EQ(driveManager->getCurrentState(), Driving::STOP);
 }
